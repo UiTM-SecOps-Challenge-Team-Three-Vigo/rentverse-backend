@@ -6,12 +6,21 @@ const { prisma } = require('../config/database');
 const { passport, handleAppleSignIn } = require('../config/passport');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
+const nodemailer = require('nodemailer');
 const { auth } = require('../middleware/auth'); // Import auth middleware
 
 const router = express.Router();
 
 // Initialize Passport
 router.use(passport.initialize());
+
+const transporter = nodemailer.createTransport({
+  service: 'gmail', // Or use 'host' and 'port' for other providers
+  auth: {
+    user: process.env.EMAIL_USER, // e.g., 'your-email@gmail.com'
+    pass: process.env.EMAIL_PASS, // e.g., your app-specific password
+  },
+});
 
 /**
  * @swagger
@@ -356,27 +365,18 @@ router.post('/verify-otp', async (req, res) => {
     if (!tempToken || !otp) {
       return res
         .status(400)
-        .json({ success: false, message: 'Token and OTP are required' });
+        .json({ success: false, message: 'Token and OTP required' });
     }
 
-    // Verify the temporary token
     let decoded;
     try {
       decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
     } catch (err) {
-      return res.status(401).json({
-        success: false,
-        message: 'Session expired. Please login again.',
-      });
-    }
-
-    if (!decoded.partial) {
       return res
-        .status(400)
-        .json({ success: false, message: 'Invalid login flow' });
+        .status(401)
+        .json({ success: false, message: 'Session expired' });
     }
 
-    // Get user to check secret
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
     });
@@ -385,38 +385,58 @@ router.post('/verify-otp', async (req, res) => {
         .status(404)
         .json({ success: false, message: 'User not found' });
 
-    // Verify 6-digit code
-    const verified = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
-      encoding: 'base32',
-      token: otp,
-    });
+    let isValid = false;
 
-    if (!verified) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'Invalid OTP code' });
+    // 1️⃣ CHECK AUTHENTICATOR APP (TOTP)
+    if (user.twoFactorSecret) {
+      const isTotpValid = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: otp,
+        window: 1, // Allow 30sec leeway
+      });
+      if (isTotpValid) isValid = true;
     }
 
-    // ✅ Success! Issue Real Token
+    // 2️⃣ CHECK EMAIL OTP (Fallback)
+    if (!isValid && user.emailOtp && user.emailOtp === otp) {
+      if (new Date() < new Date(user.emailOtpExpires)) {
+        isValid = true;
+        // Clear used OTP
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { emailOtp: null, emailOtpExpires: null },
+        });
+      }
+    }
+
+    if (!isValid) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid or expired code' });
+    }
+
+    // Success! Issue real token
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+      { expiresIn: '7d' }
     );
 
-    const { password: _, twoFactorSecret, ...userWithoutPassword } = user;
+    const {
+      password: _,
+      twoFactorSecret,
+      emailOtp,
+      ...userWithoutPassword
+    } = user;
 
     res.json({
       success: true,
       message: 'Login successful',
-      data: {
-        user: userWithoutPassword,
-        token,
-      },
+      data: { user: userWithoutPassword, token },
     });
   } catch (error) {
-    console.error('Verify OTP error:', error);
+    console.error('Verify error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
@@ -1091,6 +1111,52 @@ router.post('/oauth/unlink', async (req, res) => {
       success: false,
       message: 'Internal server error',
     });
+  }
+});
+
+router.post('/mfa/send-email', async (req, res) => {
+  try {
+    const { tempToken } = req.body;
+
+    // Verify temp token to identify user
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res
+        .status(401)
+        .json({ success: false, message: 'Session expired' });
+    }
+
+    if (!decoded.partial)
+      return res.status(400).json({ success: false, message: 'Invalid flow' });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Save to DB
+    const user = await prisma.user.update({
+      where: { id: decoded.userId },
+      data: {
+        emailOtp: otp,
+        emailOtpExpires: expires,
+      },
+    });
+
+    // Send Email
+    await transporter.sendMail({
+      from: '"RentVerse Security" <noreply@rentverse.com>',
+      to: user.email,
+      subject: 'Your Verification Code',
+      text: `Your login verification code is: ${otp}. It expires in 10 minutes.`,
+      html: `<b>Your login verification code is: ${otp}</b><br>It expires in 10 minutes.`,
+    });
+
+    res.json({ success: true, message: 'Code sent to your email' });
+  } catch (error) {
+    console.error('Send Email error:', error);
+    res.status(500).json({ success: false, message: 'Failed to send email' });
   }
 });
 

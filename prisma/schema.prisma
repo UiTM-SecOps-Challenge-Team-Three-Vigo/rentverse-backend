@@ -50,6 +50,10 @@ model User {
   // ✅ MFA FIELDS
   twoFactorSecret String?   // Stores the secret key for Google Auth
   isTwoFactorEnabled Boolean @default(false)
+
+  // ✅ EMAIL OTP FIELDS
+  emailOtp        String?
+  emailOtpExpires DateTime?
   
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
