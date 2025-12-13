@@ -1,3 +1,4 @@
+const { authLimiter } = require('../middleware/rateLimiter');
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -252,6 +253,7 @@ router.post(
  */
 router.post(
   '/login',
+  authLimiter,
   [body('email').isEmail().normalizeEmail(), body('password').notEmpty()],
   async (req, res) => {
     try {
@@ -1114,7 +1116,7 @@ router.post('/oauth/unlink', async (req, res) => {
   }
 });
 
-router.post('/mfa/send-email', async (req, res) => {
+router.post('/mfa/send-email', authLimiter, async (req, res) => {
   try {
     const { tempToken } = req.body;
 
