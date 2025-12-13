@@ -199,6 +199,7 @@ const bookingRoutes = require('./modules/bookings/bookings.routes');
 const propertyTypeRoutes = require('./modules/propertyTypes/propertyTypes.routes');
 const amenityRoutes = require('./modules/amenities/amenities.routes');
 const predictionRoutes = require('./modules/predictions/predictions.routes');
+const twoFactorAuthRoutes = require('./routes/2fa');
 
 // Use routes
 app.use('/api/auth', authRoutes);
@@ -209,6 +210,7 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/property-types', propertyTypeRoutes);
 app.use('/api/amenities', amenityRoutes);
 app.use('/api/predictions', predictionRoutes);
+app.use('/api/2fa', twoFactorAuthRoutes);
 
 /**
  * @swagger

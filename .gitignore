@@ -17,6 +17,7 @@ coverage/
 temp/
 tmp/
 output/
+rentverse-backend\prisma\rentals.csv
 
 # Database
 prisma/migrations/

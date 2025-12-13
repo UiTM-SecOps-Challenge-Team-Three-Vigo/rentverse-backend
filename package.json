@@ -35,6 +35,7 @@
     "seed": "node prisma/seed.js"
   },
   "dependencies": {
+    "2fa-util": "^1.5.0",
     "@maptiler/sdk": "^3.9.0",
     "@prisma/client": "^5.3.1",
     "@supabase/supabase-js": "^2.57.0",
@@ -61,6 +62,7 @@
     "passport-twitter": "^1.0.4",
     "puppeteer": "^24.22.0",
     "qrcode": "^1.5.4",
+    "speakeasy": "^2.0.0",
     "streamifier": "^0.1.1",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.0",

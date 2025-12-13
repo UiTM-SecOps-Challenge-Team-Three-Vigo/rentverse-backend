@@ -46,6 +46,11 @@ model User {
   profilePicture   String?           // URL for user's profile picture
   password         String
   role             Role              @default(USER)
+
+  // ✅ MFA FIELDS
+  twoFactorSecret String?   // Stores the secret key for Google Auth
+  isTwoFactorEnabled Boolean @default(false)
+  
   isActive         Boolean           @default(true)
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt

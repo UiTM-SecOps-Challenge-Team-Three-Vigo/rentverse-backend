@@ -4,6 +4,9 @@ const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const { prisma } = require('../config/database');
 const { passport, handleAppleSignIn } = require('../config/passport');
+const speakeasy = require('speakeasy');
+const qrcode = require('qrcode');
+const { auth } = require('../middleware/auth'); // Import auth middleware
 
 const router = express.Router();
 
@@ -255,36 +258,47 @@ router.post(
       const { email, password } = req.body;
 
       // Find user
-      const user = await prisma.user.findUnique({
-        where: { email },
-      });
+      const user = await prisma.user.findUnique({ where: { email } });
 
       if (!user || !user.isActive) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials',
-        });
+        return res
+          .status(401)
+          .json({ success: false, message: 'Invalid credentials' });
       }
 
       // Check password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({
-          success: false,
-          message: 'Invalid credentials',
+        return res
+          .status(401)
+          .json({ success: false, message: 'Invalid credentials' });
+      }
+
+      // ✅ MFA CHECK: If enabled, stop here and ask for OTP
+      if (user.isTwoFactorEnabled) {
+        // Generate a temporary "Partial Login" token (valid for 5 mins)
+        const tempToken = jwt.sign(
+          { userId: user.id, partial: true },
+          process.env.JWT_SECRET,
+          { expiresIn: '5m' }
+        );
+
+        return res.json({
+          success: true,
+          requireMFA: true,
+          tempToken: tempToken,
+          message: 'Please enter your 2FA code',
         });
       }
 
-      // Generate JWT token
+      // ❌ No MFA? Issue full token immediately
       const token = jwt.sign(
         { userId: user.id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
-      // Remove password from response
-      // eslint-disable-next-line no-unused-vars
-      const { password: _, ...userWithoutPassword } = user;
+      const { password: _, twoFactorSecret, ...userWithoutPassword } = user;
 
       res.json({
         success: true,
@@ -296,13 +310,116 @@ router.post(
       });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-      });
+      res
+        .status(500)
+        .json({ success: false, message: 'Internal server error' });
     }
   }
 );
+
+/**
+ * @swagger
+ * /api/auth/verify-otp:
+ *   post:
+ *     summary: Verify OTP for 2FA
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - tempToken
+ *               - otp
+ *             properties:
+ *               tempToken:
+ *                 type: string
+ *               otp:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OTP verification successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AuthResponse'
+ *       400:
+ *         description: Bad request
+ *       401:
+ *         description: Invalid OTP or token
+ */
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { tempToken, otp } = req.body;
+
+    if (!tempToken || !otp) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Token and OTP are required' });
+    }
+
+    // Verify the temporary token
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    } catch (err) {
+      return res.status(401).json({
+        success: false,
+        message: 'Session expired. Please login again.',
+      });
+    }
+
+    if (!decoded.partial) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid login flow' });
+    }
+
+    // Get user to check secret
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+    });
+    if (!user)
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found' });
+
+    // Verify 6-digit code
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: otp,
+    });
+
+    if (!verified) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid OTP code' });
+    }
+
+    // ✅ Success! Issue Real Token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
+    const { password: _, twoFactorSecret, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: userWithoutPassword,
+        token,
+      },
+    });
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 
 /**
  * @swagger
@@ -321,16 +438,12 @@ router.post(
 router.get('/me', async (req, res) => {
   try {
     const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'No token provided',
-      });
-    }
+    if (!token)
+      return res
+        .status(401)
+        .json({ success: false, message: 'No token provided' });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
@@ -343,27 +456,18 @@ router.get('/me', async (req, res) => {
         phone: true,
         role: true,
         isActive: true,
-        createdAt: true,
+        isTwoFactorEnabled: true, // ✅ Return 2FA status
       },
     });
 
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not found',
-      });
-    }
+    if (!user)
+      return res
+        .status(401)
+        .json({ success: false, message: 'User not found' });
 
-    res.json({
-      success: true,
-      data: { user },
-    });
+    res.json({ success: true, data: { user } });
   } catch (error) {
-    console.error('Auth me error:', error);
-    res.status(401).json({
-      success: false,
-      message: 'Invalid token',
-    });
+    res.status(401).json({ success: false, message: 'Invalid token' });
   }
 });
 
@@ -990,4 +1094,113 @@ router.post('/oauth/unlink', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/auth/mfa/setup:
+ *   get:
+ *     summary: Generate MFA QR Code
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *   responses:
+ *     200:
+ *       description: Returns QR Code URL and Secret
+ */
+router.get('/mfa/setup', auth, async (req, res) => {
+  try {
+    const secret = speakeasy.generateSecret({
+      name: `RentVerse (${req.user.email})`,
+    });
+
+    // Save secret temporarily (do not enable isTwoFactorEnabled yet)
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { twoFactorSecret: secret.base32 },
+    });
+
+    const qrCode = await qrcode.toDataURL(secret.otpauth_url);
+
+    res.json({
+      success: true,
+      data: {
+        secret: secret.base32,
+        qrCode,
+      },
+    });
+  } catch (error) {
+    console.error('MFA Setup error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/auth/mfa/verify:
+ *   post:
+ *   summary: Verify OTP and Enable MFA
+ *   tags: [Authentication]
+ *   security:
+ *     - bearerAuth: []
+ */
+router.post('/mfa/verify', auth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: token,
+    });
+
+    if (!verified) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid OTP Code' });
+    }
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { isTwoFactorEnabled: true },
+    });
+
+    res.json({ success: true, message: 'MFA Enabled Successfully' });
+  } catch (error) {
+    console.error('MFA Verify error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
+
+router.post('/mfa/enable', auth, async (req, res) => {
+  try {
+    const { token } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } });
+
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: token,
+    });
+
+    if (!verified) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Invalid OTP. MFA not enabled.' });
+    }
+
+    // Activate MFA
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { isTwoFactorEnabled: true },
+    });
+
+    res.json({
+      success: true,
+      message: 'Two-Factor Authentication Enabled Successfully',
+    });
+  } catch (error) {
+    console.error('MFA Enable error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+});
 module.exports = router;
