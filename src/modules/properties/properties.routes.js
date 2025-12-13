@@ -163,20 +163,10 @@ const router = express.Router();
  *           description: "Multi-unit residential building"
  *         amenities: [
  *           {
- *             amenity: {
- *               id: "amenity-ac-001"
- *               name: "Air Conditioning"
- *               description: "Central air conditioning system"
- *               category: "COMFORT"
- *             }
+ *             amenity: { id: "amenity-ac-001", name: "Air Conditioning", description: "Central air conditioning system", category: "COMFORT" }
  *           },
  *           {
- *             amenity: {
- *               id: "amenity-pool-001"
- *               name: "Swimming Pool"
- *               description: "Community swimming pool"
- *               category: "RECREATION"
- *             }
+ *             amenity: { id: "amenity-pool-001", name: "Swimming Pool", description: "Community swimming pool", category: "RECREATION" }
  *           }
  *         ]
  *         owner:
@@ -300,87 +290,91 @@ const router = express.Router();
  *               data:
  *                 properties: [
  *                   {
- *                     id: "96712e5d-fef2-4d26-affc-b2a66efe51f6"
- *                     code: "PROP-ML-010"
- *                     title: "Historic Shophouse in Malacca"
- *                     description: "Beautifully restored 3-story shophouse in UNESCO World Heritage area."
- *                     address: "Jalan Hang Jebat, Malacca"
- *                     city: "Malacca"
- *                     state: "Malacca"
- *                     country: "MY"
- *                     zipCode: "75200"
- *                     latitude: 2.1951
- *                     longitude: 102.2501
- *                     mapsUrl: "https://www.google.com/maps/@2.1951,102.2501,15z"
- *                     price: 3500.00
- *                     currencyCode: "MYR"
- *                     bedrooms: 3
- *                     bathrooms: 2
- *                     areaSqm: 160.0
- *                     furnished: false
- *                     isAvailable: true
- *                     status: "APPROVED"
- *                     viewCount: 156
- *                     averageRating: 4.3
- *                     totalRatings: 12
- *                     isFavorited: false
- *                     favoriteCount: 8
- *                     images: [
+ *                     "id": "96712e5d-fef2-4d26-affc-b2a66efe51f6",
+ *                     "code": "PROP-ML-010",
+ *                     "title": "Historic Shophouse in Malacca",
+ *                     "description": "Beautifully restored 3-story shophouse in UNESCO World Heritage area.",
+ *                     "address": "Jalan Hang Jebat, Malacca",
+ *                     "city": "Malacca",
+ *                     "state": "Malacca",
+ *                     "country": "MY",
+ *                     "zipCode": "75200",
+ *                     "latitude": 2.1951,
+ *                     "longitude": 102.2501,
+ *                     "mapsUrl": "https://www.google.com/maps/@2.1951,102.2501,15z",
+ *                     "price": 3500.00,
+ *                     "currencyCode": "MYR",
+ *                     "bedrooms": 3,
+ *                     "bathrooms": 2,
+ *                     "areaSqm": 160.0,
+ *                     "furnished": false,
+ *                     "isAvailable": true,
+ *                     "status": "APPROVED",
+ *                     "viewCount": 156,
+ *                     "averageRating": 4.3,
+ *                     "totalRatings": 12,
+ *                     "isFavorited": false,
+ *                     "favoriteCount": 8,
+ *                     "images": [
  *                       "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=800"
- *                     ]
- *                     propertyType:
- *                       code: "APARTMENT"
- *                       name: "Apartment"
- *                     amenities: [
- *                       { amenity: { name: "Air Conditioning", category: "COMFORT" } }
- *                     ]
- *                     owner:
- *                       name: "John Doe"
- *                       email: "landlord@example.com"
- *                     createdAt: "2025-09-19T08:30:45.123Z"
- *                     updatedAt: "2025-09-19T10:15:22.456Z"
+ *                     ],
+ *                     "propertyType": {
+ *                       "code": "APARTMENT",
+ *                       "name": "Apartment"
+ *                     },
+ *                     "amenities": [
+ *                       { "amenity": { "name": "Air Conditioning", "category": "COMFORT" } }
+ *                     ],
+ *                     "owner": {
+ *                       "name": "John Doe",
+ *                       "email": "landlord@example.com"
+ *                     },
+ *                     "createdAt": "2025-09-19T08:30:45.123Z",
+ *                     "updatedAt": "2025-09-19T10:15:22.456Z"
  *                   },
  *                   {
- *                     id: "a7b23c4d-e5f6-7890-abcd-ef1234567890"
- *                     code: "PROP-PG-011"
- *                     title: "Seaside Luxury Condo at Tanjung Bungah"
- *                     description: "Premium beachfront condominium with stunning sea views."
- *                     address: "Jalan Tanjung Bungah, Tanjung Bungah"
- *                     city: "Tanjung Bungah"
- *                     state: "Penang"
- *                     country: "MY"
- *                     zipCode: "11200"
- *                     latitude: 5.4665
- *                     longitude: 100.2794
- *                     mapsUrl: "https://www.google.com/maps/@5.4665,100.2794,15z"
- *                     price: 5800.00
- *                     currencyCode: "MYR"
- *                     bedrooms: 3
- *                     bathrooms: 3
- *                     areaSqm: 150.0
- *                     furnished: true
- *                     isAvailable: true
- *                     status: "APPROVED"
- *                     viewCount: 289
- *                     averageRating: 4.7
- *                     totalRatings: 23
- *                     isFavorited: true
- *                     favoriteCount: 15
- *                     images: [
+ *                     "id": "a7b23c4d-e5f6-7890-abcd-ef1234567890",
+ *                     "code": "PROP-PG-011",
+ *                     "title": "Seaside Luxury Condo at Tanjung Bungah",
+ *                     "description": "Premium beachfront condominium with stunning sea views.",
+ *                     "address": "Jalan Tanjung Bungah, Tanjung Bungah",
+ *                     "city": "Tanjung Bungah",
+ *                     "state": "Penang",
+ *                     "country": "MY",
+ *                     "zipCode": "11200",
+ *                     "latitude": 5.4665,
+ *                     "longitude": 100.2794,
+ *                     "mapsUrl": "https://www.google.com/maps/@5.4665,100.2794,15z",
+ *                     "price": 5800.00,
+ *                     "currencyCode": "MYR",
+ *                     "bedrooms": 3,
+ *                     "bathrooms": 3,
+ *                     "areaSqm": 150.0,
+ *                     "furnished": true,
+ *                     "isAvailable": true,
+ *                     "status": "APPROVED",
+ *                     "viewCount": 289,
+ *                     "averageRating": 4.7,
+ *                     "totalRatings": 23,
+ *                     "isFavorited": true,
+ *                     "favoriteCount": 15,
+ *                     "images": [
  *                       "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800"
- *                     ]
- *                     propertyType:
- *                       code: "CONDOMINIUM"
- *                       name: "Condominium"
- *                     amenities: [
- *                       { amenity: { name: "Swimming Pool", category: "RECREATION" } },
- *                       { amenity: { name: "24-Hour Security", category: "SECURITY" } }
- *                     ]
- *                     owner:
- *                       name: "John Doe"
- *                       email: "landlord@example.com"
- *                     createdAt: "2025-09-20T14:22:10.987Z"
- *                     updatedAt: "2025-09-20T16:45:33.234Z"
+ *                     ],
+ *                     "propertyType": {
+ *                       "code": "CONDOMINIUM",
+ *                       "name": "Condominium"
+ *                     },
+ *                     "amenities": [
+ *                       { "amenity": { "name": "Swimming Pool", "category": "RECREATION" } },
+ *                       { "amenity": { "name": "24-Hour Security", "category": "SECURITY" } }
+ *                     ],
+ *                     "owner": {
+ *                       "name": "John Doe",
+ *                       "email": "landlord@example.com"
+ *                     },
+ *                     "createdAt": "2025-09-20T14:22:10.987Z",
+ *                     "updatedAt": "2025-09-20T16:45:33.234Z"
  *                   }
  *                 ]
  *                 pagination:
@@ -711,9 +705,9 @@ router.get('/geojson', propertiesController.getGeoJSON);
  *                       name: "Apartment"
  *                     amenities: [
  *                       {
- *                         amenity: {
- *                           name: "Air Conditioning"
- *                           category: "COMFORT"
+ *                         "amenity": {
+ *                           "name": "Air Conditioning",
+ *                           "category": "COMFORT"
  *                         }
  *                       }
  *                     ]
@@ -1846,54 +1840,6 @@ router.get(
   propertyViewsController.getFavoriteStatus
 );
 
-/**
- * @swagger
- * /api/properties/{id}/favorite-stats:
- *   get:
- *     summary: Get property favorite statistics (public)
- *     tags: [Properties]
- *     parameters:
- *       - in: path
- *         name: id
- *         schema:
- *           type: string
- *         required: true
- *         description: UUID of the property to get favorite stats
- *     responses:
- *       200:
- *         description: Property favorite statistics
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                   properties:
- *                     propertyId:
- *                       type: string
- *                       description: Property UUID
- *                       example: "123e4567-e89b-12d3-a456-426614174000"
- *                     favoriteCount:
- *                       type: integer
- *                       description: Total number of users who favorited this property
- *                       example: 12
- *                     recentFavorites:
- *                       type: array
- *                       description: Recent users who favorited this property (limited info)
- *                       items:
- *                         type: object
- *                         properties:
- *                           userId:
- *                             type: string
- *                           username:
- *                             type: string
- *                           createdAt:
- *                             type: string
- *                             format: date-time
- *       404:
 /**
  * @swagger
  * /api/properties/{id}/favorite-stats:

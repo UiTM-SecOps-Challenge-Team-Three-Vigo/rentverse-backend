@@ -65,7 +65,6 @@ const router = express.Router();
  *         name: John Doe
  *         dateOfBirth: 1990-01-15
  *         phone: "+1234567890"
- *         phone: "+1234567890"
  *         role: USER
  *         isActive: true
  *         createdAt: 2023-01-01T00:00:00.000Z

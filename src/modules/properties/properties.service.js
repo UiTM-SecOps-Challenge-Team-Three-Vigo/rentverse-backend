@@ -141,11 +141,25 @@ class PropertiesService {
 
     // Apply filters
     if (filters.propertyTypeId) where.propertyTypeId = filters.propertyTypeId;
-    if (filters.city)
-      where.city = { contains: filters.city, mode: 'insensitive' };
+
+    // ✅ FIX 1: Enhanced Location Filter (City OR State OR Address)
+    // Wrapped in 'AND' so it doesn't break the 'status' filter above
+    if (filters.city) {
+      where.AND = [
+        {
+          OR: [
+            { city: { contains: filters.city, mode: 'insensitive' } },
+            { state: { contains: filters.city, mode: 'insensitive' } },
+            { address: { contains: filters.city, mode: 'insensitive' } },
+          ],
+        },
+      ];
+    }
+
     if (filters.available !== undefined)
       where.isAvailable = filters.available === 'true';
-    if (filters.bedrooms) where.bedrooms = parseInt(filters.bedrooms);
+    if (filters.bedrooms) where.bedrooms = { gte: parseInt(filters.bedrooms) }; // changed to gte (greater than or equal) for better UX
+
     // Only allow admin to filter by status
     if (filters.status && userRole === 'ADMIN') where.status = filters.status;
     if (filters.furnished !== undefined)
@@ -157,9 +171,10 @@ class PropertiesService {
       if (filters.maxPrice) where.price.lte = parseFloat(filters.maxPrice);
     }
 
+    // ✅ FIX 2: Correct count() parameter structure
     const [properties, total] = await Promise.all([
       propertiesRepository.findMany({ where, skip, take: limit }),
-      propertiesRepository.count(where),
+      propertiesRepository.count({ where }), // Wrapped 'where' in an object
     ]);
 
     const pages = Math.ceil(total / limit);
