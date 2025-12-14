@@ -2,7 +2,6 @@ const fs = require('fs');
 const path = require('path');
 const ejs = require('ejs');
 const puppeteer = require('puppeteer');
-const { getSignatureQRCode } = require('./eSignature.service');
 const { prisma } = require('../config/database');
 const {
   cloudinary,
@@ -12,6 +11,41 @@ const {
 const { v4: uuidv4 } = require('uuid');
 
 class PDFGenerationService {
+  /**
+   * ✅ NEW HELPER: Convert local file path to base64 for PDF embedding
+   * Fixes the issue where Puppeteer cannot load local images via relative paths
+   */
+  imageToBase64(relativePath) {
+    try {
+      if (!relativePath) return null;
+
+      // Remove leading slash if present to join correctly
+      const cleanPath = relativePath.startsWith('/')
+        ? relativePath.slice(1)
+        : relativePath;
+
+      // Construct absolute path.
+      // Assumption: 'uploads' folder is at the root of your project, 2 levels up from services/
+      const absolutePath = path.join(__dirname, '../../', cleanPath);
+
+      if (fs.existsSync(absolutePath)) {
+        const bitmap = fs.readFileSync(absolutePath);
+        // Detect mime type simply based on extension or default to png
+        const ext = path.extname(absolutePath).slice(1) || 'png';
+        return `data:image/${ext};base64,${bitmap.toString('base64')}`;
+      }
+
+      console.warn(`⚠️ Signature file not found at: ${absolutePath}`);
+      return null;
+    } catch (error) {
+      console.error(
+        `❌ Error converting image to base64: ${relativePath}`,
+        error.message
+      );
+      return null;
+    }
+  }
+
   /**
    * Upload PDF buffer to Cloudinary using signed upload
    * @param {Buffer} pdfBuffer
@@ -26,7 +60,6 @@ class PDFGenerationService {
     }
 
     return new Promise((resolve, reject) => {
-      // Generate unique public ID
       const fileTimestamp = new Date()
         .toISOString()
         .replace(/[-T:.Z]/g, '')
@@ -34,8 +67,8 @@ class PDFGenerationService {
       const shortId = uuidv4().split('-')[0];
       const publicId = `${CLOUD_FOLDER_PREFIX}/rental-agreements/${fileName}-${fileTimestamp}-${shortId}`;
 
-      // Generate signature for signed upload
       const signatureTimestamp = Math.round(new Date().getTime() / 1000);
+
       const uploadParams = {
         public_id: publicId,
         resource_type: 'raw',
@@ -43,30 +76,20 @@ class PDFGenerationService {
         use_filename: false,
         unique_filename: false,
         overwrite: true,
-        type: 'upload', // Public upload type
-        access_mode: 'public', // Make publicly accessible
+        type: 'upload',
+        access_mode: 'public',
         timestamp: signatureTimestamp,
       };
 
-      // Generate signature using Cloudinary's method (fixed order and format)
-      const paramsToSign = {
-        public_id: publicId,
-        resource_type: 'raw',
-        timestamp: signatureTimestamp,
-        format: 'pdf',
-        overwrite: true,
-        use_filename: false,
-        unique_filename: false,
-        type: 'upload',
-        access_mode: 'public',
-      };
+      // ✅ FIX: Exclude 'resource_type' from signature generation
+      const paramsToSign = { ...uploadParams };
+      delete paramsToSign.resource_type;
 
       const signature = cloudinary.utils.api_sign_request(
         paramsToSign,
         process.env.CLOUD_API_SECRET
       );
 
-      // Add signature and API key to params
       const signedParams = {
         ...uploadParams,
         signature: signature,
@@ -80,19 +103,11 @@ class PDFGenerationService {
         (error, result) => {
           if (error) {
             console.error('Cloudinary signed PDF upload error:', error);
-
-            // More detailed error logging for debugging
-            if (error.message && error.message.includes('untrusted')) {
-              console.error(
-                '❌ Account marked as untrusted. Consider upgrading Cloudinary plan or contact support.'
-              );
-            }
-
             reject(error);
             return;
           }
 
-          console.log('✅ PDF uploaded successfully with signed upload');
+          console.log('✅ PDF uploaded successfully to Cloudinary');
 
           resolve({
             publicId: result.public_id,
@@ -106,26 +121,19 @@ class PDFGenerationService {
         }
       );
 
-      // Write buffer to upload stream
       uploadStream.end(pdfBuffer);
     });
   }
 
   /**
-   * Fallback: Upload PDF as image resource type (workaround for untrusted accounts)
-   * @param {Buffer} pdfBuffer
-   * @param {string} fileName
-   * @returns {Promise<Object>}
+   * Fallback: Upload PDF as image resource type
    */
   async uploadPDFAsImageFallback(pdfBuffer, fileName) {
     if (!isCloudinaryConfigured) {
-      throw new Error(
-        'Cloudinary is not configured. Please check your environment variables.'
-      );
+      throw new Error('Cloudinary is not configured.');
     }
 
     return new Promise((resolve, reject) => {
-      // Generate unique public ID
       const timestamp = new Date()
         .toISOString()
         .replace(/[-T:.Z]/g, '')
@@ -140,13 +148,13 @@ class PDFGenerationService {
       const uploadStream = cloudinary.uploader.upload_stream(
         {
           public_id: publicId,
-          resource_type: 'image', // Use 'image' instead of 'raw' as fallback
+          resource_type: 'image',
           format: 'pdf',
           use_filename: false,
           unique_filename: false,
           overwrite: true,
-          type: 'upload', // Public upload type
-          access_mode: 'public', // Make publicly accessible
+          type: 'upload',
+          access_mode: 'public',
         },
         (error, result) => {
           if (error) {
@@ -155,32 +163,21 @@ class PDFGenerationService {
             return;
           }
 
-          console.log('✅ PDF uploaded successfully using image fallback');
-
-          // Generate proper PDF access URL for fallback uploads
           let accessUrl = result.secure_url;
-
-          // If uploaded as image resource, create proper PDF delivery URL
           if (result.resource_type === 'image') {
-            // Use fl_attachment to force download and bypass some restrictions
             accessUrl = cloudinary.url(result.public_id, {
               resource_type: 'image',
               format: 'pdf',
               flags: 'attachment',
               secure: true,
             });
-
-            console.log(
-              '📎 Generated PDF download URL for image resource:',
-              accessUrl
-            );
           }
 
           resolve({
             publicId: result.public_id,
             fileName: `${fileName}.pdf`,
             size: result.bytes,
-            url: accessUrl, // Use the processed URL
+            url: accessUrl,
             etag: result.etag,
             format: result.format,
             resourceType: result.resource_type,
@@ -188,18 +185,15 @@ class PDFGenerationService {
         }
       );
 
-      // Write buffer to upload stream
       uploadStream.end(pdfBuffer);
     });
   }
 
   /**
-   * Chrome path detection for macOS/Linux
+   * Chrome path detection
    */
   getChromePath() {
-    if (process.env.CHROME_PATH) {
-      return process.env.CHROME_PATH;
-    }
+    if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
 
     const macChromePaths = [
       '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -211,54 +205,30 @@ class PDFGenerationService {
     ];
 
     for (const chromePath of macChromePaths) {
-      if (fs.existsSync(chromePath)) {
-        console.log(`🔍 Found Chrome at: ${chromePath}`);
-        return chromePath;
-      }
+      if (fs.existsSync(chromePath)) return chromePath;
     }
-
-    console.log(
-      '⚠️  No Chrome installation found, using Puppeteer bundled Chromium'
-    );
     return null;
   }
 
   /**
-   * Generate accessible PDF URL from Cloudinary public_id
-   * @param {string} publicId
-   * @param {string} resourceType
-   * @returns {string}
+   * Generate accessible PDF URL
    */
   generateAccessiblePDFUrl(publicId, resourceType = 'raw') {
-    // For both raw and image, try the simplest possible URL
     const baseUrl = `https://res.cloudinary.com/${process.env.CLOUD_NAME}`;
-
-    if (resourceType === 'raw') {
-      // Direct raw URL without any transformations
-      return `${baseUrl}/raw/upload/${publicId}.pdf`;
-    } else {
-      // Direct image URL without transformations for PDF
-      return `${baseUrl}/image/upload/${publicId}.pdf`;
-    }
+    return resourceType === 'raw'
+      ? `${baseUrl}/raw/upload/${publicId}.pdf`
+      : `${baseUrl}/image/upload/${publicId}.pdf`;
   }
 
   /**
-   * Save PDF to local storage and return server URL
-   * @param {Buffer} pdfBuffer
-   * @param {string} fileName
-   * @returns {Promise<Object>}
+   * Save PDF to local storage
    */
   async saveToLocalStorage(pdfBuffer, fileName) {
-    const fs = require('fs');
-    const path = require('path');
-
-    // Create uploads directory if it doesn't exist (using the same path as app.js route)
     const uploadsDir = path.join(__dirname, '../../uploads/pdfs');
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // Generate unique filename
     const timestamp = new Date()
       .toISOString()
       .replace(/[-T:.Z]/g, '')
@@ -267,10 +237,8 @@ class PDFGenerationService {
     const uniqueFileName = `${fileName}-${timestamp}-${shortId}.pdf`;
     const filePath = path.join(uploadsDir, uniqueFileName);
 
-    // Save PDF to local file
     fs.writeFileSync(filePath, pdfBuffer);
 
-    // Generate server URL using the correct route path
     const serverUrl = `${process.env.BASE_URL || 'http://localhost:3005'}/api/files/pdfs/${uniqueFileName}`;
 
     return {
@@ -278,128 +246,97 @@ class PDFGenerationService {
       filePath: filePath,
       url: serverUrl,
       size: pdfBuffer.length,
-      publicId: null, // Local files don't have publicId
+      publicId: null,
     };
   }
 
   /**
-   * Generate rental agreement PDF and upload to Cloudinary
+   * ✅ MODIFIED: Generate Final PDF with Signatures and Update Agreement
    * @param {string} leaseId
-   * @returns {Promise<Object>} Cloudinary upload result + RentalAgreement record
+   * @param {string} tenantSigPath - Path/URL to tenant signature
+   * @param {string} landlordSigPath - Path/URL to landlord signature
+   * @returns {Promise<Object>}
    */
-  async generateAndUploadRentalAgreementPDF(leaseId) {
+  async generateAndUploadRentalAgreementPDF(
+    leaseId,
+    tenantSigPath,
+    landlordSigPath
+  ) {
     try {
-      console.log(
-        `🚀 Starting rental agreement PDF generation for lease: ${leaseId}`
-      );
+      console.log(`🚀 Starting Final PDF generation for lease: ${leaseId}`);
 
-      // 1. Get lease data dengan relasi lengkap
+      // 1. Get lease data with complete relations AND existing agreement
       const lease = await prisma.lease.findUnique({
         where: { id: leaseId },
         include: {
           property: {
             include: {
               propertyType: true,
-              amenities: {
-                include: {
-                  amenity: true,
-                },
-              },
+              amenities: { include: { amenity: true } },
             },
           },
-          tenant: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              name: true,
-              phone: true,
-            },
-          },
-          landlord: {
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              name: true,
-              phone: true,
-            },
-          },
+          tenant: true,
+          landlord: true,
+          agreement: true, // ✅ Include the existing agreement draft
         },
       });
 
-      if (!lease) {
-        throw new Error(`Lease with ID ${leaseId} not found`);
+      if (!lease || !lease.agreement) {
+        throw new Error(`Lease or Agreement draft not found for ID ${leaseId}`);
       }
 
       console.log(
         `📋 Retrieved lease data for property: ${lease.property.title}`
       );
 
-      // 2. Generate QR codes for signatures
-      console.log('📝 Generating e-signature QR codes...');
+      // 2. PREPARE IMAGES: Convert paths to Base64
+      // ✅ This fixes the "I can't see the signs" issue
+      const tenantSigBase64 = tenantSigPath
+        ? this.imageToBase64(tenantSigPath)
+        : null;
+      const landlordSigBase64 = landlordSigPath
+        ? this.imageToBase64(landlordSigPath)
+        : null;
 
-      const landlordSignData = {
-        name: lease.landlord.name,
-        timestamp: new Date().toISOString(),
-        leaseId: lease.id,
-        role: 'landlord',
-      };
-
-      const tenantSignData = {
-        name: lease.tenant.name,
-        timestamp: new Date().toISOString(),
-        leaseId: lease.id,
-        role: 'tenant',
-      };
-
-      const [landlordQRCode, tenantQRCode] = await Promise.all([
-        getSignatureQRCode(landlordSignData),
-        getSignatureQRCode(tenantSignData),
-      ]);
-
-      console.log('✅ QR codes generated successfully');
-
-      // 3. Prepare data untuk template EJS
+      // 3. Prepare data for EJS template
       const templateData = {
         rentalAgreement: {
           id: `RA-${lease.id.slice(-8).toUpperCase()}-${new Date().getFullYear()}`,
+          date: new Date().toLocaleDateString('en-GB'),
         },
         lease: lease,
         signatures: {
           landlord: {
-            qrCode: landlordQRCode,
-            signDate: new Date().toLocaleDateString('id-ID'),
             name: lease.landlord.name,
+            signDate: new Date().toLocaleDateString('en-GB'),
+            image: landlordSigBase64, // ✅ Pass Base64 data
           },
           tenant: {
-            qrCode: tenantQRCode,
-            signDate: new Date().toLocaleDateString('id-ID'),
             name: lease.tenant.name,
+            signDate: lease.agreement.tenantSignedAt
+              ? new Date(lease.agreement.tenantSignedAt).toLocaleDateString(
+                  'en-GB'
+                )
+              : new Date().toLocaleDateString('en-GB'),
+            image: tenantSigBase64, // ✅ Pass Base64 data
           },
         },
       };
 
-      // 4. Read dan render EJS template
+      // 4. Read and render EJS template
       const templatePath = path.join(
         __dirname,
         '../../templates/rental-agreement.ejs'
       );
-      console.log('📖 Reading template from:', templatePath);
-
       if (!fs.existsSync(templatePath)) {
         throw new Error(`Template file not found: ${templatePath}`);
       }
 
       const templateContent = fs.readFileSync(templatePath, 'utf-8');
-      console.log('⚡ Rendering EJS template...');
       const html = ejs.render(templateContent, templateData);
 
-      // 5. Generate PDF menggunakan Puppeteer
+      // 5. Generate PDF using Puppeteer
       console.log('🌐 Launching browser for PDF generation...');
-
       const chromePath = this.getChromePath();
       const launchOptions = {
         headless: 'new',
@@ -413,10 +350,7 @@ class PDFGenerationService {
           '--disable-gpu',
         ],
       };
-
-      if (chromePath) {
-        launchOptions.executablePath = chromePath;
-      }
+      if (chromePath) launchOptions.executablePath = chromePath;
 
       const browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
@@ -425,17 +359,11 @@ class PDFGenerationService {
         waitUntil: 'networkidle0',
         timeout: 30000,
       });
-
       console.log('📄 Generating PDF...');
       const pdfBuffer = await page.pdf({
         format: 'A4',
         printBackground: true,
-        margin: {
-          top: '20px',
-          bottom: '20px',
-          left: '20px',
-          right: '20px',
-        },
+        margin: { top: '20px', bottom: '20px', left: '20px', right: '20px' },
         preferCSSPageSize: true,
       });
 
@@ -444,78 +372,66 @@ class PDFGenerationService {
         `✅ PDF generated successfully! Size: ${Math.round(pdfBuffer.length / 1024)} KB`
       );
 
-      // 6. Save PDF locally with Cloudinary as backup
-      console.log('💾 Saving PDF locally...');
-      const fileName = `rental-agreement-${lease.id}`;
-
+      // 6. Save PDF (Primary: Local, Backup: Cloudinary)
+      const fileName = `final-agreement-${lease.id}`;
       let uploadResult;
-      try {
-        // Primary: Save to local storage
-        uploadResult = await this.saveToLocalStorage(pdfBuffer, fileName);
-        console.log('✅ PDF saved to local storage successfully!');
-      } catch (localStorageError) {
-        console.warn(
-          '⚠️  Local storage failed, trying Cloudinary backup...',
-          localStorageError.message
-        );
 
+      try {
+        console.log('☁️ Attempting upload to Cloudinary...');
+        // ✅ Try Cloudinary First
+        uploadResult = await this.uploadPDFToCloudinary(pdfBuffer, fileName);
+        console.log('✅ Final PDF uploaded to Cloudinary successfully.');
+      } catch (cloudError) {
+        console.warn(
+          '⚠️ Cloudinary upload failed, switching to local backup...',
+          cloudError.message
+        );
         try {
-          // Backup: Upload to Cloudinary with signed method
-          uploadResult = await this.uploadPDFToCloudinary(pdfBuffer, fileName);
-          console.log('✅ PDF uploaded to Cloudinary successfully as backup!');
-        } catch (cloudinaryError) {
-          console.error('❌ Both local storage and Cloudinary failed:', {
-            localError: localStorageError.message,
-            cloudinaryError: cloudinaryError.message,
-          });
+          // Backup: Save Locally
+          uploadResult = await this.saveToLocalStorage(pdfBuffer, fileName);
+          console.log('✅ Final PDF saved to local storage (Backup).');
+        } catch (localError) {
           throw new Error(
-            `Failed to save PDF: Local storage failed (${localStorageError.message}), Cloudinary backup also failed (${cloudinaryError.message})`
+            `Failed to save PDF: Cloudinary (${cloudError.message}) | Local (${localError.message})`
           );
         }
       }
 
       console.log('📍 PDF URL:', uploadResult.url);
 
-      // 7. Simpan record RentalAgreement ke database
-      console.log('💾 Saving rental agreement record to database...');
-      const rentalAgreement = await prisma.rentalAgreement.create({
+      // 7. ✅ UPDATE the Existing Agreement Record (Don't create new)
+      console.log('💾 Updating rental agreement record with final PDF...');
+      const updatedAgreement = await prisma.rentalAgreement.update({
+        where: { leaseId },
         data: {
-          leaseId: lease.id,
           pdfUrl: uploadResult.url,
           publicId: uploadResult.publicId,
           fileName: uploadResult.fileName,
           fileSize: uploadResult.size,
+          status: 'COMPLETED',
+          generatedAt: new Date(),
+          updatedAt: new Date(),
         },
       });
 
-      console.log('✅ Rental agreement record saved to database');
+      console.log('✅ Agreement finalized and database updated.');
 
       return {
         success: true,
-        message: 'Rental agreement PDF generated and uploaded successfully',
-        data: {
-          rentalAgreement,
-          cloudinary: {
-            url: uploadResult.url,
-            publicId: uploadResult.publicId,
-            fileName: uploadResult.fileName,
-            size: uploadResult.size,
-            etag: uploadResult.etag,
-          },
-        },
+        message: 'Rental agreement finalized successfully',
+        data: updatedAgreement,
       };
     } catch (error) {
-      console.error('❌ Error generating rental agreement PDF:', error.message);
-      throw new Error(
-        `Failed to generate rental agreement PDF: ${error.message}`
+      console.error(
+        '❌ Error generating final rental agreement PDF:',
+        error.message
       );
+      throw new Error(`Failed to generate final PDF: ${error.message}`);
     }
   }
 
   /**
    * Get rental agreement PDF for a lease
-   * @param {string} leaseId
-   * @returns {Promise<Object>}
    */
   async getRentalAgreementPDF(leaseId) {
     try {
@@ -524,30 +440,19 @@ class PDFGenerationService {
         include: {
           lease: {
             include: {
-              property: {
-                select: { id: true, title: true },
-              },
-              tenant: {
-                select: { id: true, name: true, email: true },
-              },
-              landlord: {
-                select: { id: true, name: true, email: true },
-              },
+              property: { select: { id: true, title: true } },
+              tenant: { select: { id: true, name: true, email: true } },
+              landlord: { select: { id: true, name: true, email: true } },
             },
           },
         },
       });
 
-      if (!rentalAgreement) {
+      if (!rentalAgreement)
         throw new Error('Rental agreement not found for this lease');
-      }
 
-      // Generate accessible URL based on how the file was stored
       let accessibleUrl = rentalAgreement.pdfUrl;
-
-      // If we have publicId, generate a more accessible URL
       if (rentalAgreement.publicId) {
-        // Determine resource type from the URL or publicId
         const resourceType = rentalAgreement.pdfUrl.includes('/image/upload/')
           ? 'image'
           : 'raw';
@@ -555,16 +460,11 @@ class PDFGenerationService {
           rentalAgreement.publicId,
           resourceType
         );
-
-        console.log('📎 Generated accessible PDF URL:', accessibleUrl);
       }
 
       return {
         success: true,
-        data: {
-          ...rentalAgreement,
-          pdfUrl: accessibleUrl, // Use the accessible URL
-        },
+        data: { ...rentalAgreement, pdfUrl: accessibleUrl },
       };
     } catch (error) {
       throw new Error(`Failed to get rental agreement: ${error.message}`);
@@ -573,8 +473,6 @@ class PDFGenerationService {
 
   /**
    * Check if rental agreement already exists for a lease
-   * @param {string} leaseId
-   * @returns {Promise<boolean>}
    */
   async rentalAgreementExists(leaseId) {
     const existing = await prisma.rentalAgreement.findUnique({

@@ -238,6 +238,19 @@ model RentalAgreement {
   fileName    String?  // Nama file untuk display
   fileSize    Int?     // Size dalam bytes
   generatedAt DateTime @default(now())
+
+  // ✅ NEW FIELDS FOR MODULE 3 (Digital Signatures)
+  status               String    @default("PENDING_TENANT") // PENDING_TENANT, PENDING_LANDLORD, COMPLETED
+  agreementContent     String    @db.Text // The raw legal text for hashing
+  contentHash          String?   // SHA-256 Integrity Seal
+  
+  tenantSignatureUrl   String?
+  landlordSignatureUrl String?
+  
+  tenantSignedAt       DateTime?
+  landlordSignedAt     DateTime?
+  updatedAt            DateTime  @updatedAt // Track updates
+  
   lease       Lease    @relation(fields: [leaseId], references: [id], onDelete: Cascade)
 
   @@map("rental_agreements")

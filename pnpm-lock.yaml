@@ -91,6 +91,9 @@ importers:
       passport-twitter:
         specifier: ^1.0.4
         version: 1.0.4
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
       puppeteer:
         specifier: ^24.22.0
         version: 24.22.0
@@ -369,6 +372,18 @@ packages:
     resolution:
       {
         integrity: sha512-9hSetMI7ECqbFiKICrNa4w70deTUfArtwXykPUvSHWOdzOlfa9ajglu7mNCntlvxycTiOAXkQGwjQCzzDEMRMg==,
+      }
+
+  '@pdf-lib/standard-fonts@1.0.0':
+    resolution:
+      {
+        integrity: sha512-hU30BK9IUN/su0Mn9VdlVKsWBS6GyhVfqjwl1FjZN4TxP6cCw0jP2w7V3Hf5uX7M0AZJ16vey9yE0ny7Sa59ZA==,
+      }
+
+  '@pdf-lib/upng@1.0.1':
+    resolution:
+      {
+        integrity: sha512-dQK2FUMQtowVP00mtIksrlZhdFXQZPC+taih1q4CvPZ5vqdxR/LKBaFg0oAfzd1GlHZXXSPdQfzQnt+ViGvEIQ==,
       }
 
   '@pkgr/core@0.2.9':
@@ -2655,6 +2670,12 @@ packages:
       }
     engines: { node: '>= 14' }
 
+  pako@1.0.11:
+    resolution:
+      {
+        integrity: sha512-4hLB8Py4zZce5s4yd9XzopqwVv/yGNhV1Bl8NTmCq1763HeK2+EwVTv+leGeL13Dnh2wfbqowVPXCIO0z4taYw==,
+      }
+
   parent-module@1.0.1:
     resolution:
       {
@@ -2778,6 +2799,12 @@ packages:
         integrity: sha512-SuLdBvS42z33m8ejRbInMapQe8n0D3vN/Xd5fmWM3tufNgRQFBpaW2YVJxQZV4iPNqb0vEFvssMEo5w9c6BTIA==,
       }
     hasBin: true
+
+  pdf-lib@1.17.1:
+    resolution:
+      {
+        integrity: sha512-V/mpyJAoTsN4cnP31vc0wfNA1+p20evqqnap0KLoRUN0Yk/p3wN52DOEsL4oBFcLdb76hlpKPtzJIgo67j/XLw==,
+      }
 
   pend@1.2.0:
     resolution:
@@ -3414,6 +3441,12 @@ packages:
         integrity: sha512-N3WMsuqV66lT30CrXNbEjx4GEwlow3v6rr4mCcv6prnfwhS01rkgyFdjPNBYd9br7LpXV1+Emh01fHnq2Gdgrw==,
       }
 
+  tslib@1.14.1:
+    resolution:
+      {
+        integrity: sha512-Xni35NKzjgMrwevysHTCArtLDpPvye8zV/0E4EyYn43P7/7qvQwPh9BGkHewbMulVntbigmcT7rdX3BNo9wRJg==,
+      }
+
   tslib@2.8.1:
     resolution:
       {
@@ -3911,6 +3944,14 @@ snapshots:
       '@otplib/core': 12.0.1
       '@otplib/plugin-crypto': 12.0.1
       '@otplib/plugin-thirty-two': 12.0.1
+
+  '@pdf-lib/standard-fonts@1.0.0':
+    dependencies:
+      pako: 1.0.11
+
+  '@pdf-lib/upng@1.0.1':
+    dependencies:
+      pako: 1.0.11
 
   '@pkgr/core@0.2.9': {}
 
@@ -5295,6 +5336,8 @@ snapshots:
       degenerator: 5.0.1
       netmask: 2.0.2
 
+  pako@1.0.11: {}
+
   parent-module@1.0.1:
     dependencies:
       callsites: 3.1.0
@@ -5362,6 +5405,13 @@ snapshots:
   pbf@4.0.1:
     dependencies:
       resolve-protobuf-schema: 2.1.0
+
+  pdf-lib@1.17.1:
+    dependencies:
+      '@pdf-lib/standard-fonts': 1.0.0
+      '@pdf-lib/upng': 1.0.1
+      pako: 1.0.11
+      tslib: 1.14.1
 
   pend@1.2.0: {}
 
@@ -5755,6 +5805,8 @@ snapshots:
   touch@3.1.1: {}
 
   tr46@0.0.3: {}
+
+  tslib@1.14.1: {}
 
   tslib@2.8.1: {}
 

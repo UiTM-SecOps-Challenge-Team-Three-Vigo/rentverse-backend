@@ -98,18 +98,19 @@
             color: #888;
             font-size: 12px;
         }
-        
-        .stamp-area {
-            border: 2px dashed #999;
+
+        .signature-image-container {
             height: 100px;
-            margin: 15px 0;
+            margin-bottom: 15px;
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: center;
-            color: #666;
-            font-style: italic;
-            background: #f9f9f9;
-            border-radius: 5px;
+            border-bottom: 2px solid #333;
+        }
+
+        .signature-image-container img {
+            max-height: 90px;
+            max-width: 100%;
         }
         
         .qr-code {
@@ -154,45 +155,6 @@
             font-weight: bold;
         }
         
-        .witness-section {
-            margin-top: 50px;
-            text-align: center;
-            font-size: 12px;
-            color: #666;
-            border-top: 1px solid #ccc;
-            padding-top: 25px;
-            page-break-inside: avoid;
-        }
-        
-        .witness-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-            margin-top: 20px;
-        }
-        
-        .witness-box {
-            text-align: center;
-        }
-        
-        .witness-line {
-            border-bottom: 1px solid #333;
-            height: 40px;
-            margin-bottom: 10px;
-        }
-        
-        .notary-seal {
-            border: 2px dashed #ccc;
-            width: 120px;
-            height: 80px;
-            margin: 10px auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-style: italic;
-            background: #f9f9f9;
-        }
-        
         ul {
             padding-left: 25px;
         }
@@ -218,58 +180,9 @@
                 font-size: 12px;
                 line-height: 1.4;
             }
-            
-            .container {
-                max-width: none;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr 1fr;
-            }
-            
-            .signature-section {
-                margin-top: 40px;
-            }
-            
-            .section {
-                page-break-inside: avoid;
-            }
-            
-            .signature-section,
-            .witness-section {
-                page-break-inside: avoid;
-            }
-            
-            .info-box {
-                background: white !important;
-                border: 1px solid #333 !important;
-            }
-            
-            .stamp-area,
-            .signature-line {
-                background: white !important;
-            }
-        }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            body {
-                padding: 20px;
-            }
-            
-            .info-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .signature-section {
-                justify-content: space-around;
-                gap: 20px;
-            }
-            
-            .witness-grid {
-                grid-template-columns: 1fr;
-                gap: 30px;
-            }
+            .container { max-width: none; }
+            .info-box { background: white !important; border: 1px solid #333 !important; }
+            .signature-line { background: white !important; }
         }
     </style>
 </head>
@@ -311,141 +224,20 @@
                 <% }); %>
             </ul>
             <% } %>
-            
-            <p><strong>2.4 CONDITION OF PREMISES:</strong> THE LESSEE acknowledges that THE LESSEE has examined the Premises and accepts them in their current condition as suitable for residential purposes. THE LESSEE acknowledges that no representations as to the condition of the Premises have been made by THE LESSOR, except as specifically set forth in this Agreement.</p>
-            
-            <% if (lease.property.description) { %>
-            <p><strong>2.5 ADDITIONAL DESCRIPTION:</strong> <%- lease.property.description %></p>
-            <% } %>
-            
-            <p><strong>2.6 RIGHT TO EXCLUSIVE POSSESSION:</strong> During the term of this Agreement and so long as THE LESSEE is not in default hereunder, THE LESSEE shall have the right to exclusive possession and quiet enjoyment of the Premises, subject to the terms and conditions of this Agreement and THE LESSOR's right of entry as provided herein.</p>
         </div>
 
         <div class="section">
             <div class="section-title">3. TERM</div>
-            <p><strong>3.1 LEASE TERM:</strong> The term of this Agreement shall be for a period of one (1) year, beginning on <span class="highlight"><%- new Date(lease.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span> and ending on <span class="highlight"><%- new Date(lease.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>. Any holding over after the expiration or earlier termination of the term without THE LESSOR's prior written consent shall be a default of this Agreement and shall not be construed to be a tenancy from month to month. If THE LESSEE pays and THE LESSOR accepts rent for any period during which the term ends on a day other than the last day of a calendar month, rent for the remainder of the month during which the term begins or ends shall be prorated. If the term ends on a day other than the last day of a calendar month plus, if the term ends on a day other than the last day of the month, rent for the remainder of the month shall be prorated. Any extension of this Agreement shall be in writing and accepted, this Agreement will automatically renew on a month-to-month basis and will continue in force such will continue until terminated by either party in accordance with the following procedures. After the expiration of the original term, either party may terminate this Agreement without cause by giving notice as designated below.</p>
-            
-            <p><strong>3.2 RENEWAL AND EXTENSION:</strong> This Agreement may be extended or renewed only by mutual written agreement of both parties executed prior to the expiration of the current term. Any proposed changes to the terms and conditions, including rent adjustments, must be agreed upon in writing by both parties.</p>
-            
-            <p><strong>3.3 HOLDOVER TENANCY:</strong> If THE LESSEE remains in possession of the Premises after expiration of this lease term without THE LESSOR's written consent, such possession shall be deemed a holdover tenancy at sufferance and not a renewal of this Agreement. During any holdover period, all terms and conditions of this Agreement shall remain in effect except that the rental amount may be increased as determined by THE LESSOR.</p>
+            <p><strong>3.1 LEASE TERM:</strong> The term of this Agreement shall be for a period of one (1) year, beginning on <span class="highlight"><%- new Date(lease.startDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span> and ending on <span class="highlight"><%- new Date(lease.endDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) %></span>.</p>
         </div>
 
         <div class="section">
             <div class="section-title">4. MONTHLY RENT</div>
-            <p><strong>4.1 RENT AMOUNT:</strong> The rent to be paid by THE LESSEE to THE LESSOR throughout the term of this Agreement shall be <span class="currency"><%- lease.currencyCode %></span> <span class="amount"><%- parseFloat(lease.rentAmount).toLocaleString() %></span> (<%- lease.currencyCode === 'MYR' ? 'Malaysian Ringgit' : lease.currencyCode %>) per calendar month ("Monthly Rent"). THE LESSEE shall pay THE LESSOR the Monthly Rent on or before the first (1st) day of each month during the lease term. Rent for any partial month at the beginning or end of the lease term shall be prorated on a daily basis.</p>
-            
-            <p><strong>4.2 PAYMENT SCHEDULE:</strong> Monthly Rent shall be due and payable in advance on the first (1st) day of each calendar month during the term of this Agreement. THE LESSEE agrees that rent shall be paid to THE LESSOR at the time this Agreement is executed. Rent for each partial month shall be prorated. THE LESSEE shall not deduct or offset against rent unless expressly permitted by applicable law.</p>
-            
-            <p><strong>4.3 LATE FEE:</strong> If THE LESSEE fails to pay the Monthly Rent when due, THE LESSEE shall pay a late fee as permitted by applicable law. A late fee of fifteen percent (15%) of the monthly rent amount or as permitted by local law may be charged for any rent not received by THE LESSOR within five (5) days after the due date. All accrued late fees shall become additional rent under this Agreement.</p>
-            
-            <p><strong>4.4 RETURNED PAYMENTS:</strong> THE LESSEE shall pay THE LESSOR a returned check fee as permitted by applicable law for each check returned by THE LESSEE's bank for any reason. After two (2) returned checks, THE LESSOR may require THE LESSEE to make all future payments by cashier's check or money order.</p>
+            <p><strong>4.1 RENT AMOUNT:</strong> The rent to be paid by THE LESSEE to THE LESSOR throughout the term of this Agreement shall be <span class="currency"><%- lease.currencyCode %></span> <span class="amount"><%- parseFloat(lease.rentAmount).toLocaleString() %></span> (<%- lease.currencyCode === 'MYR' ? 'Malaysian Ringgit' : lease.currencyCode %>) per calendar month ("Monthly Rent").</p>
             
             <% if (lease.securityDeposit) { %>
-            <p><strong>4.5 SECURITY DEPOSIT:</strong> Upon execution of this Agreement, THE LESSEE shall deposit with THE LESSOR the sum of <span class="currency"><%- lease.currencyCode %></span> <span class="amount"><%- parseFloat(lease.securityDeposit).toLocaleString() %></span> as a security deposit to secure THE LESSEE's faithful performance of THE LESSEE's obligations under this Agreement. THE LESSOR may use the security deposit to remedy any default by THE LESSEE or to repair any damage to the Premises caused by THE LESSEE, reasonable wear and tear excepted. Any unused portion of the security deposit shall be returned to THE LESSEE within the time period required by applicable law after termination of this Agreement.</p>
+            <p><strong>4.5 SECURITY DEPOSIT:</strong> Upon execution of this Agreement, THE LESSEE shall deposit with THE LESSOR the sum of <span class="currency"><%- lease.currencyCode %></span> <span class="amount"><%- parseFloat(lease.securityDeposit).toLocaleString() %></span> as a security deposit.</p>
             <% } %>
-            
-            <% if (lease.notes) { %>
-            <p><strong>4.6 ADDITIONAL PAYMENT TERMS:</strong> <%- lease.notes %></p>
-            <% } %>
-        </div>
-
-        <div class="section">
-            <div class="section-title">5. UTILITIES</div>
-            <p><strong>5.1 UTILITY SERVICES:</strong> To the extent permitted by applicable utility service providers, THE LESSEE shall transfer all utility accounts into THE LESSEE's name within forty-eight (48) hours of taking possession of the Premises. THE LESSEE shall pay, prior to delinquency, for all utilities (including, without limitation, gas, electricity, water, sewer, trash collection, telephone, internet, and cable television services) used during THE LESSEE's occupancy of the Premises. THE LESSEE shall pay, prior to delinquency, for all utilities (including, without limitation, gas, electricity, water, sewer, refuse collection, telephone, internet and cable television) serving the Premises during the term of this Agreement.</p>
-            
-            <p><strong>5.2 UTILITY DISCONNECTION:</strong> THE LESSOR may, but shall not be obligated to, pay any delinquent utility bills to prevent disconnection of utility service to the Premises. Any amounts paid by THE LESSOR for utilities shall be reimbursed by THE LESSEE as additional rent within ten (10) days of written notice from THE LESSOR.</p>
-            
-            <p><strong>5.3 INCLUDED UTILITIES:</strong> Unless specifically stated otherwise in writing, no utilities or services are included in the rent. Any utilities or services that THE LESSOR agrees to provide or pay for shall be specified in a separate written addendum to this Agreement.</p>
-            
-            <p><strong>5.4 RESPONSIBILITY FOR UTILITY DEPOSITS:</strong> THE LESSEE shall be responsible for any deposits required by utility companies to establish service accounts and shall hold THE LESSOR harmless from any claims related to utility services during the lease term.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">6. USE AND OCCUPANCY</div>
-            <p><strong>6.1 RESIDENTIAL USE ONLY:</strong> The Premises shall be used and occupied by THE LESSEE exclusively as a private single-family residence. THE LESSEE shall not use the Premises for any business, professional, or commercial purposes without THE LESSOR's prior written consent. No signs, advertisements, or notices shall be displayed on or about the Premises without THE LESSOR's prior written consent.</p>
-            
-            <p><strong>6.2 OCCUPANCY LIMITS:</strong> The Premises shall be occupied only by THE LESSEE and THE LESSEE's immediate family members or other persons specifically approved by THE LESSOR in writing. THE LESSEE shall not permit any other person to use or occupy the Premises without first obtaining THE LESSOR's written consent. THE LESSEE shall be responsible for the conduct of all occupants and guests.</p>
-            
-            <p><strong>6.3 PROHIBITION OF ILLEGAL ACTIVITIES:</strong> THE LESSEE shall not use the Premises for any purpose that is illegal or deemed to be a nuisance. THE LESSEE shall not do or permit anything to be done on the Premises that will increase the existing rate of insurance on the Premises or cause a cancellation of any insurance policy covering the Premises.</p>
-            
-            <p><strong>6.4 ASSIGNMENT AND SUBLETTING:</strong> THE LESSEE shall not assign this Agreement or sublet any portion of the Premises without THE LESSOR's prior written consent. Any attempt to assign or sublet without such consent shall be void and shall constitute a material breach of this Agreement. THE LESSOR's consent to one assignment or subletting shall not be deemed consent to subsequent assignments or sublettings.</p>
-            
-            <p><strong>6.5 COMPLIANCE WITH LAWS:</strong> THE LESSEE shall comply with all applicable laws, ordinances, rules, and regulations of any governmental authority having jurisdiction over the Premises. THE LESSEE shall not commit waste or permit waste to be committed on the Premises.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">7. MAINTENANCE AND REPAIRS</div>
-            <p><strong>7.1 LESSOR'S MAINTENANCE OBLIGATIONS:</strong> THE LESSOR agrees to keep the Premises in good repair and tenantable condition and to comply with all applicable laws regarding the condition of residential rental property. THE LESSOR shall maintain the structural components of the Premises, including the foundation, roof, exterior walls, and major building systems such as plumbing, electrical, heating, and air conditioning systems, in good working order.</p>
-            
-            <p><strong>7.2 LESSEE'S MAINTENANCE OBLIGATIONS:</strong> THE LESSEE agrees to maintain the Premises in a clean, sanitary, and good condition and to use reasonable care in the use of the Premises and its fixtures and appliances. THE LESSEE shall be responsible for minor maintenance items including, but not limited to, changing light bulbs, replacing air conditioning filters, keeping drains free of obstructions, and general housekeeping.</p>
-            
-            <p><strong>7.3 REPORTING MAINTENANCE ISSUES:</strong> THE LESSEE shall promptly notify THE LESSOR in writing of any maintenance, repair, or safety issues concerning the Premises. THE LESSEE shall not attempt to make repairs to major building systems or structural components without THE LESSOR's prior written consent.</p>
-            
-            <p><strong>7.4 ACCESS FOR REPAIRS:</strong> THE LESSOR and THE LESSOR's agents shall have the right to enter the Premises at reasonable times and upon reasonable notice to THE LESSEE (except in cases of emergency) for the purpose of inspecting the Premises and making necessary repairs and maintenance. THE LESSOR shall use reasonable efforts to minimize any inconvenience to THE LESSEE during such entry.</p>
-            
-            <p><strong>7.5 LESSEE'S LIABILITY FOR DAMAGES:</strong> THE LESSEE shall be liable for any damage to the Premises caused by THE LESSEE's negligence, misuse, or violations of this Agreement. This shall not include reasonable wear and tear from normal use of the Premises.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">8. RULES AND OBLIGATIONS</div>
-            <p><strong>8.1</strong> THE LESSEE agrees to comply with all applicable laws, ordinances, and regulations.</p>
-            
-            <p><strong>8.2</strong> THE LESSEE shall adhere to the following rules:</p>
-            <ul>
-                <li><strong>8.2.1</strong> No smoking inside the premises</li>
-                <li><strong>8.2.2</strong> No illegal activities on the premises</li>
-                <li><strong>8.2.3</strong> Maintain quiet enjoyment and respect for neighbors</li>
-                <li><strong>8.2.4</strong> Proper use and care of all appliances and fixtures</li>
-                <li><strong>8.2.5</strong> No structural modifications without written permission</li>
-            </ul>
-            
-            <p><strong>8.3</strong> THE LESSOR reserves the right to establish additional reasonable rules with proper notice.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">9. PETS</div>
-            <p><strong>9.1</strong> Pet policy shall be determined by separate written agreement between the parties.</p>
-            
-            <p><strong>9.2</strong> No pets are permitted on the premises without prior written consent from THE LESSOR.</p>
-            
-            <p><strong>9.3</strong> If pets are permitted, additional deposit and/or monthly fees may apply as specified in the pet addendum.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">10. TERMINATION</div>
-            <p><strong>10.1</strong> Either party may terminate this Agreement by providing thirty (30) days written notice to the other party.</p>
-            
-            <p><strong>10.2</strong> In case of material breach of this Agreement, the non-breaching party may terminate with seven (7) days written notice after the breach has been identified and communicated.</p>
-            
-            <p><strong>10.3</strong> Upon termination, THE LESSEE shall vacate the premises and return all keys and access devices to THE LESSOR.</p>
-            
-            <p><strong>10.4</strong> THE LESSOR shall return the security deposit, less any lawful deductions, within the timeframe required by applicable law.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">11. DEFAULT AND REMEDIES</div>
-            <p><strong>11.1</strong> Events of default include but are not limited to:</p>
-            <ul>
-                <li><strong>11.1.1</strong> Non-payment of rent or other charges when due</li>
-                <li><strong>11.1.2</strong> Violation of any terms or conditions of this Agreement</li>
-                <li><strong>11.1.3</strong> Use of premises for illegal purposes</li>
-                <li><strong>11.1.4</strong> Abandonment of the premises</li>
-            </ul>
-            
-            <p><strong>11.2</strong> Upon default, THE LESSOR may exercise all rights and remedies available at law or in equity.</p>
-        </div>
-
-        <div class="section">
-            <div class="section-title">12. GENERAL PROVISIONS</div>
-            <p><strong>12.1 ENTIRE AGREEMENT:</strong> This Agreement constitutes the entire agreement between the parties and supersedes all prior negotiations, representations, or agreements relating to the subject matter herein.</p>
-            
-            <p><strong>12.2 MODIFICATIONS:</strong> This Agreement may only be modified in writing signed by both parties.</p>
-            
-            <p><strong>12.3 GOVERNING LAW:</strong> This Agreement shall be governed by and construed in accordance with the laws of the jurisdiction where the property is located.</p>
-            
-            <p><strong>12.4 SEVERABILITY:</strong> If any provision of this Agreement is deemed invalid or unenforceable, the remaining provisions shall remain in full force and effect.</p>
-            
-            <p><strong>12.5 BINDING EFFECT:</strong> This Agreement shall be binding upon the heirs, successors, and assigns of both parties.</p>
         </div>
 
         <div class="date-signed">
@@ -455,7 +247,11 @@
         <div class="signature-section">
             <div class="signature-box">
                 <p><strong>THE FIRST PARTY (LESSOR)</strong></p>
-                <% if (signatures && signatures.landlord && signatures.landlord.qrCode) { %>
+                <% if (signatures && signatures.landlord && signatures.landlord.image) { %>
+                    <div class="signature-image-container">
+                        <img src="<%= signatures.landlord.image %>" alt="Landlord Signature" />
+                    </div>
+                <% } else if (signatures && signatures.landlord && signatures.landlord.qrCode) { %>
                     <div class="qr-code">
                         <img src="<%= signatures.landlord.qrCode %>" alt="Landlord E-Signature QR Code" />
                     </div>
@@ -472,7 +268,11 @@
 
             <div class="signature-box">
                 <p><strong>THE SECOND PARTY (LESSEE)</strong></p>
-                <% if (signatures && signatures.tenant && signatures.tenant.qrCode) { %>
+                <% if (signatures && signatures.tenant && signatures.tenant.image) { %>
+                    <div class="signature-image-container">
+                        <img src="<%= signatures.tenant.image %>" alt="Tenant Signature" />
+                    </div>
+                <% } else if (signatures && signatures.tenant && signatures.tenant.qrCode) { %>
                     <div class="qr-code">
                         <img src="<%= signatures.tenant.qrCode %>" alt="Tenant E-Signature QR Code" />
                     </div>
@@ -487,26 +287,6 @@
                 <p><% if (signatures && signatures.tenant && signatures.tenant.signDate) { %><%= signatures.tenant.signDate %><% } else { %>_______________<% } %></p>
             </div>
         </div>
-
-        <!-- Notary section commented out as requested -->
-        <!-- 
-        <div class="witness-section">
-            <p><strong>WITNESS/NOTARY</strong></p>
-            <div class="witness-grid">
-                <div class="witness-box">
-                    <div class="witness-line"></div>
-                    <p>Witness Signature</p>
-                    <p>Name: _________________</p>
-                    <p>Date: _________________</p>
-                </div>
-                <div class="witness-box">
-                    <div class="notary-seal">Notary Seal</div>
-                    <p>Notary Public</p>
-                    <p>Commission Expires: __________</p>
-                </div>
-            </div>
-        </div>
-        -->
     </div>
 </body>
 </html>

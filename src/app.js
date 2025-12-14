@@ -26,6 +26,7 @@ const propertyTypeRoutes = require('./modules/propertyTypes/propertyTypes.routes
 const amenityRoutes = require('./modules/amenities/amenities.routes');
 const predictionRoutes = require('./modules/predictions/predictions.routes');
 const twoFactorAuthRoutes = require('./routes/2fa');
+const agreementRoutes = require('./modules/agreements/agreements.routes');
 
 const app = express();
 
@@ -189,6 +190,7 @@ app.use('/api/property-types', propertyTypeRoutes);
 app.use('/api/amenities', amenityRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/2fa', twoFactorAuthRoutes);
+app.use('/api/agreements', agreementRoutes);
 
 // ==========================================
 // 7. UTILITY ROUTES
