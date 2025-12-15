@@ -55,6 +55,9 @@ importers:
       express-validator:
         specifier: ^7.0.1
         version: 7.2.1
+      geoip-lite:
+        specifier: ^1.4.10
+        version: 1.4.10
       googleapis:
         specifier: ^159.0.0
         version: 159.0.0
@@ -112,6 +115,9 @@ importers:
       swagger-ui-express:
         specifier: ^5.0.0
         version: 5.0.1(express@4.21.2)
+      ua-parser-js:
+        specifier: ^2.0.7
+        version: 2.0.7
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
@@ -668,6 +674,12 @@ packages:
       }
     engines: { node: '>=4' }
 
+  async@2.6.4:
+    resolution:
+      {
+        integrity: sha512-mzo5dfJYwAn29PeiJ0zvwTo04zj8HDJj0Mn8TD7sno7q12prdbnasKJHhkm2c1LgrhlJ0teaea8860oxi51mGA==,
+      }
+
   async@3.2.6:
     resolution:
       {
@@ -1195,6 +1207,12 @@ packages:
       }
     engines: { node: '>= 0.8', npm: 1.2.8000 || >= 1.4.16 }
 
+  detect-europe-js@0.1.2:
+    resolution:
+      {
+        integrity: sha512-lgdERlL3u0aUdHocoouzT10d9I89VVhk0qNRmll7mXdGfJT1/wqZ2ZLA4oJAjeACPY5fT1wsbq2AT+GkuInsow==,
+      }
+
   devtools-protocol@0.0.1495869:
     resolution:
       {
@@ -1701,6 +1719,13 @@ packages:
       }
     engines: { node: '>=18' }
 
+  geoip-lite@1.4.10:
+    resolution:
+      {
+        integrity: sha512-4N69uhpS3KFd97m00wiFEefwa+L+HT5xZbzPhwu+sDawStg6UN/dPwWtUfkQuZkGIY1Cj7wDVp80IsqNtGMi2w==,
+      }
+    engines: { node: '>=10.3.0' }
+
   geojson-vt@4.0.2:
     resolution:
       {
@@ -1977,6 +2002,13 @@ packages:
       }
     engines: { node: '>= 12' }
 
+  ip-address@5.9.4:
+    resolution:
+      {
+        integrity: sha512-dHkI3/YNJq4b/qQaz+c8LuarD3pY24JqZWfjB8aZx1gtpc2MDILu9L9jpZe1sHpzo/yWFweQVn+U//FhazUxmw==,
+      }
+    engines: { node: '>= 0.10' }
+
   ipaddr.js@1.9.1:
     resolution:
       {
@@ -2039,6 +2071,12 @@ packages:
       }
     engines: { node: '>=8' }
 
+  is-standalone-pwa@0.1.1:
+    resolution:
+      {
+        integrity: sha512-9Cbovsa52vNQCjdXOzeQq5CnCbAcRk05aU62K20WO372NrTv0NxibLFCK6lQ4/iZEFdEA3p3t2VNOn8AJ53F5g==,
+      }
+
   is-stream@3.0.0:
     resolution:
       {
@@ -2078,6 +2116,12 @@ packages:
         integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==,
       }
     hasBin: true
+
+  jsbn@1.1.0:
+    resolution:
+      {
+        integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==,
+      }
 
   json-bigint@1.0.0:
     resolution:
@@ -2157,6 +2201,13 @@ packages:
       {
         integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==,
       }
+
+  lazy@1.0.11:
+    resolution:
+      {
+        integrity: sha512-Y+CjUfLmIpoUCCRl0ub4smrYtGGr5AOa2AKOaWelGHOGz33X/Y/KizefGqbkwfz44+cnq/+9habclf8vOmu2LA==,
+      }
+    engines: { node: '>=0.2.0' }
 
   levn@0.4.1:
     resolution:
@@ -3069,6 +3120,14 @@ packages:
         integrity: sha512-q1b3N5QkRUWUl7iyylaaj3kOpIT0N2i9MqIEQXP73GVsN9cw3fdx8X63cEmWhJGi2PPCF23Ijp7ktmd39rawIA==,
       }
 
+  rimraf@2.7.1:
+    resolution:
+      {
+        integrity: sha512-uWjbaKIK3T1OSVptzX7Nl6PvQ3qAGtKEtVRjRuazjfL3Bx5eI409VZSqgND+4UNnmzLVdPj9FqFJNPqBZFve4w==,
+      }
+    deprecated: Rimraf versions prior to v4 are no longer supported
+    hasBin: true
+
   rimraf@3.0.2:
     resolution:
       {
@@ -3237,6 +3296,12 @@ packages:
         integrity: sha512-lW2A2s5LKi8rwu77ewisuUOtlCydF/hmQSOJjpTqTj1gZLkNgTaYnyvfxy2WBr4T/h+9c4g8HIITfj83OkFQFw==,
       }
     engines: { node: '>= 0.10.0' }
+
+  sprintf-js@1.1.2:
+    resolution:
+      {
+        integrity: sha512-VE0SOVEHCk7Qc8ulkWw3ntAzXuqf7S2lvwQaDLRnUeIEaKNQJzV6BwmLKhOqT61aGhfUMrXeaBk+oDGCzvhcug==,
+      }
 
   statuses@2.0.1:
     resolution:
@@ -3492,6 +3557,19 @@ packages:
       {
         integrity: sha512-/aCDEGatGvZ2BIk+HmLf4ifCJFwvKFNb9/JeZPMulfgFracn9QFcAf5GO8B/mweUjSoblS5In0cWhqpfs/5PQA==,
       }
+
+  ua-is-frozen@0.1.2:
+    resolution:
+      {
+        integrity: sha512-RwKDW2p3iyWn4UbaxpP2+VxwqXh0jpvdxsYpZ5j/MLLiQOfbsV5shpgQiw93+KMYQPcteeMQ289MaAFzs3G9pw==,
+      }
+
+  ua-parser-js@2.0.7:
+    resolution:
+      {
+        integrity: sha512-CFdHVHr+6YfbktNZegH3qbYvYgC7nRNEUm2tk7nSFXSODUu4tDBpaFpP1jdXBUOKKwapVlWRfTtS8bCPzsQ47w==,
+      }
+    hasBin: true
 
   uid-safe@2.1.5:
     resolution:
@@ -4128,6 +4206,10 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  async@2.6.4:
+    dependencies:
+      lodash: 4.17.21
+
   async@3.2.6: {}
 
   asynckit@0.4.0: {}
@@ -4406,6 +4488,8 @@ snapshots:
   depd@2.0.0: {}
 
   destroy@1.2.0: {}
+
+  detect-europe-js@0.1.2: {}
 
   devtools-protocol@0.0.1495869: {}
 
@@ -4762,6 +4846,16 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  geoip-lite@1.4.10:
+    dependencies:
+      async: 2.6.4
+      chalk: 4.1.2
+      iconv-lite: 0.4.24
+      ip-address: 5.9.4
+      lazy: 1.0.11
+      rimraf: 2.7.1
+      yauzl: 2.10.0
+
   geojson-vt@4.0.2: {}
 
   get-caller-file@2.0.5: {}
@@ -4943,6 +5037,12 @@ snapshots:
 
   ip-address@10.0.1: {}
 
+  ip-address@5.9.4:
+    dependencies:
+      jsbn: 1.1.0
+      lodash: 4.17.21
+      sprintf-js: 1.1.2
+
   ipaddr.js@1.9.1: {}
 
   is-arrayish@0.2.1: {}
@@ -4965,6 +5065,8 @@ snapshots:
 
   is-path-inside@3.0.3: {}
 
+  is-standalone-pwa@0.1.1: {}
+
   is-stream@3.0.0: {}
 
   isexe@2.0.0: {}
@@ -4982,6 +5084,8 @@ snapshots:
   js-yaml@4.1.0:
     dependencies:
       argparse: 2.0.1
+
+  jsbn@1.1.0: {}
 
   json-bigint@1.0.0:
     dependencies:
@@ -5037,6 +5141,8 @@ snapshots:
   keyv@4.5.4:
     dependencies:
       json-buffer: 3.0.1
+
+  lazy@1.0.11: {}
 
   levn@0.4.1:
     dependencies:
@@ -5562,6 +5668,10 @@ snapshots:
 
   rfdc@1.4.1: {}
 
+  rimraf@2.7.1:
+    dependencies:
+      glob: 7.2.3
+
   rimraf@3.0.2:
     dependencies:
       glob: 7.2.3
@@ -5677,6 +5787,8 @@ snapshots:
   speakeasy@2.0.0:
     dependencies:
       base32.js: 0.0.1
+
+  sprintf-js@1.1.2: {}
 
   statuses@2.0.1: {}
 
@@ -5826,6 +5938,14 @@ snapshots:
   typed-query-selector@2.12.0: {}
 
   typedarray@0.0.6: {}
+
+  ua-is-frozen@0.1.2: {}
+
+  ua-parser-js@2.0.7:
+    dependencies:
+      detect-europe-js: 0.1.2
+      is-standalone-pwa: 0.1.1
+      ua-is-frozen: 0.1.2
 
   uid-safe@2.1.5:
     dependencies:

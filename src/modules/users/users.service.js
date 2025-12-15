@@ -1,4 +1,5 @@
 const usersRepository = require('./users.repository');
+const { prisma } = require('../../config/database');
 
 class UsersService {
   async getAllUsers(page = 1, limit = 10, role = null) {
@@ -130,6 +131,24 @@ class UsersService {
       throw new Error('Access denied. You can only view your own profile.');
     }
     return true;
+  }
+  /**
+   * Get security activity logs for a user
+   */
+  async getUserActivityLogs(userId) {
+    return await prisma.activityLog.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: 10, // Fetch last 10 events
+      select: {
+        id: true,
+        action: true,
+        ipAddress: true,
+        userAgent: true,
+        createdAt: true,
+        details: true, // Optional: if you want to show failure reasons
+      },
+    });
   }
 }
 

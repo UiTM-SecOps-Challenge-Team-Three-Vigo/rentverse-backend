@@ -9,6 +9,7 @@ const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const nodemailer = require('nodemailer');
 const { auth } = require('../middleware/auth'); // Import auth middleware
+const securityService = require('../modules/security/security.service');
 
 const router = express.Router();
 
@@ -209,6 +210,11 @@ router.post(
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
 
+      // Log activity
+      await securityService.logActivity(req, user.id, 'REGISTER_SUCCESS', {
+        email,
+      });
+
       res.status(201).json({
         success: true,
         message: 'User registered successfully',
@@ -272,6 +278,11 @@ router.post(
       const user = await prisma.user.findUnique({ where: { email } });
 
       if (!user || !user.isActive) {
+        // ✅ SECURITY: Log Failed Login (User Not Found / Inactive)
+        await securityService.logActivity(req, null, 'LOGIN_FAILED', {
+          emailAttempt: email,
+          reason: 'User not found or inactive',
+        });
         return res
           .status(401)
           .json({ success: false, message: 'Invalid credentials' });
@@ -280,6 +291,11 @@ router.post(
       // Check password
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
+        // ✅ SECURITY: Log Failed Login (User Not Found / Inactive)
+        await securityService.logActivity(req, null, 'LOGIN_FAILED', {
+          emailAttempt: email,
+          reason: 'Invalid Password',
+        });
         return res
           .status(401)
           .json({ success: false, message: 'Invalid credentials' });
@@ -287,6 +303,10 @@ router.post(
 
       // ✅ MFA CHECK: If enabled, stop here and ask for OTP
       if (user.isTwoFactorEnabled) {
+        // ✅ SECURITY: Log MFA Challenge
+        await securityService.logActivity(req, user.id, 'LOGIN_MFA_CHALLENGE', {
+          method: 'password_verified',
+        });
         // Generate a temporary "Partial Login" token (valid for 5 mins)
         const tempToken = jwt.sign(
           { userId: user.id, partial: true },
@@ -308,6 +328,11 @@ router.post(
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
       );
+
+      // ✅ SECURITY: Log Successful Login -> Triggers New Device Check
+      await securityService.logActivity(req, user.id, 'LOGIN_SUCCESS', {
+        method: 'email_password',
+      });
 
       const { password: _, twoFactorSecret, ...userWithoutPassword } = user;
 
@@ -413,6 +438,11 @@ router.post('/verify-otp', async (req, res) => {
     }
 
     if (!isValid) {
+      // ✅ SECURITY: Log Failed MFA Attempt
+      await securityService.logActivity(req, user.id, 'MFA_FAILED', {
+        reason: 'Invalid OTP',
+      });
+
       return res
         .status(400)
         .json({ success: false, message: 'Invalid or expired code' });
@@ -424,6 +454,11 @@ router.post('/verify-otp', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // ✅ SECURITY: Log Successful MFA Login -> Triggers New Device Check
+    await securityService.logActivity(req, user.id, 'LOGIN_SUCCESS', {
+      method: 'mfa_verified',
+    });
 
     const {
       password: _,

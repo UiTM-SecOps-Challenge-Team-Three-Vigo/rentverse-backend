@@ -37,6 +37,7 @@ model Amenity {
 /// Akun pengguna (tenant, landlord, admin).
 model User {
   id               String            @id @default(uuid())
+  activityLogs     ActivityLog[]
   email            String            @unique
   firstName        String            @default("")
   lastName         String            @default("")
@@ -79,7 +80,23 @@ model User {
   @@map("users")
 }
 
+// Add this new model
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String   // e.g., "LOGIN_SUCCESS", "LOGIN_FAILED", "SENSITIVE_ACCESS"
+  ipAddress   String?
+  userAgent   String?
+  riskScore   Int      @default(0) // 0 = Safe, 100 = Critical
+  details     Json?    // Store metadata like failed password attempts or location
+  createdAt   DateTime @default(now())
 
+  user        User?    @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([ipAddress])
+  @@index([createdAt])
+}
 
 /// Listing properti yang ditawarkan (detail fisik, lokasi, harga).
 /// Gambar/Foto disimpan langsung di kolom `images` (array URL).

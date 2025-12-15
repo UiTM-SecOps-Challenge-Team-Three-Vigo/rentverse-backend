@@ -233,6 +233,22 @@ router.get('/profile', auth, usersController.getProfile);
 
 /**
  * @swagger
+ * /api/users/activity:
+ *    get:
+ *      summary: Get recent security activity logs
+ *      tags: [Users]
+ *      security:
+ *          - bearerAuth: []
+ *      responses:
+ *          200:
+ *              description: List of activity logs
+ *          401:
+ *              description: Unauthorized
+ */
+router.get('/activity', auth, usersController.getActivityLogs);
+
+/**
+ * @swagger
  * /api/users/profile:
  *   patch:
  *     summary: Update current user's profile

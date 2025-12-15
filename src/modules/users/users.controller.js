@@ -298,6 +298,15 @@ class UsersController {
       });
     }
   }
+  async getActivityLogs(req, res) {
+    try {
+      const logs = await usersService.getUserActivityLogs(req.user.id);
+      res.json({ success: true, data: logs });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ success: false, message: 'Failed to fetch logs' });
+    }
+  }
 }
 
 module.exports = new UsersController();
