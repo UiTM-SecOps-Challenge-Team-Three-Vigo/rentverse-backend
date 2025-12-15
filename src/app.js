@@ -27,6 +27,7 @@ const amenityRoutes = require('./modules/amenities/amenities.routes');
 const predictionRoutes = require('./modules/predictions/predictions.routes');
 const twoFactorAuthRoutes = require('./routes/2fa');
 const agreementRoutes = require('./modules/agreements/agreements.routes');
+const adminSecurityRoutes = require('./routes/admin-security');
 
 const app = express();
 
@@ -191,6 +192,7 @@ app.use('/api/amenities', amenityRoutes);
 app.use('/api/predictions', predictionRoutes);
 app.use('/api/2fa', twoFactorAuthRoutes);
 app.use('/api/agreements', agreementRoutes);
+app.use('/api/admin/security', adminSecurityRoutes);
 
 // ==========================================
 // 7. UTILITY ROUTES

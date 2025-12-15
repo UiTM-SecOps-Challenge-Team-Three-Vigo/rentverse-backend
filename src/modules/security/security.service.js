@@ -208,6 +208,85 @@ class SecurityService {
       console.error('Email failed:', err);
     }
   }
+
+  /**
+   * 4. [ADMIN] Get Global Security Stats for Dashboard
+   */
+  async getDashboardStats() {
+    const now = new Date();
+    const twentyFourHoursAgo = new Date(now - 24 * 60 * 60 * 1000);
+
+    // Run parallel queries for performance
+    const [totalLogs, failedLogins, recentThreats, topIps] = await Promise.all([
+      // Count total activities today
+      prisma.activityLog.count({
+        where: { createdAt: { gte: twentyFourHoursAgo } },
+      }),
+
+      // Count failed logins today
+      prisma.activityLog.count({
+        where: {
+          action: 'LOGIN_FAILED',
+          createdAt: { gte: twentyFourHoursAgo },
+        },
+      }),
+
+      // Get recent high-risk events
+      prisma.activityLog.findMany({
+        where: { action: { in: ['BRUTE_FORCE', 'NEW_DEVICE'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+        include: { user: { select: { email: true } } },
+      }),
+
+      // Group by IP to find attackers (Raw SQL needed for GroupBy in some Prisma versions, but we'll use simplified logic here)
+      prisma.activityLog.groupBy({
+        by: ['ipAddress'],
+        where: { action: 'LOGIN_FAILED' },
+        _count: { action: true },
+        orderBy: { _count: { action: 'desc' } },
+        take: 5,
+      }),
+    ]);
+
+    return {
+      dailyTotal: totalLogs,
+      dailyFailed: failedLogins,
+      recentThreats: recentThreats.map(t => ({
+        type: t.action,
+        user: t.user?.email || 'Unknown',
+        ip: t.ipAddress,
+        time: t.createdAt,
+      })),
+      topAttackers: topIps.map(ip => ({
+        ip: ip.ipAddress,
+        count: ip._count.action,
+      })),
+    };
+  }
+
+  /**
+   * 5. [ADMIN] Get Paginated All Logs
+   */
+  async getAllLogs(page = 1, limit = 20, filter = null) {
+    const skip = (page - 1) * limit;
+    const where = filter ? { action: filter } : {};
+
+    const [logs, total] = await Promise.all([
+      prisma.activityLog.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { email: true, name: true, role: true } },
+        },
+      }),
+      prisma.activityLog.count({ where }),
+    ]);
+
+    return { logs, total, pages: Math.ceil(total / limit) };
+  }
 }
 
 module.exports = new SecurityService();
