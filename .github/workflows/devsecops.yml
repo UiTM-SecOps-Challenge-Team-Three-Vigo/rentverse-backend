@@ -1,0 +1,63 @@
+name: DevSecOps Pipeline (Node.js)
+
+on:
+  push:
+    branches: ['main', 'master']
+  pull_request:
+    branches: ['main', 'master']
+
+jobs:
+  # 1. Software Composition Analysis (SCA) - Check for vulnerable libraries
+  dependency-scan:
+    name: 📦 SCA (Dependency Check)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Run NPM Audit
+        run: npm audit --audit-level=high
+        continue-on-error: true # Warn but don't fail build for now
+
+  # 2. Static Application Security Testing (SAST) - Check code logic
+  code-security:
+    name: 🛡️ SAST (CodeQL)
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript # Analyzes JS and TS
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+  # 3. Secret Scanning - Detect leaked API keys or .env files
+  secret-scan:
+    name: 🔑 Secret Detection
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks Scanner
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
