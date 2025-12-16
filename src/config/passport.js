@@ -3,10 +3,9 @@ const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const FacebookStrategy = require('passport-facebook').Strategy;
 const GitHubStrategy = require('passport-github2').Strategy;
 const TwitterStrategy = require('passport-twitter').Strategy;
-const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const axios = require('axios');
-const { prisma } = require('./database');
+const { prisma } = require('../config/database'); // Ensure path is correct
 const { verifyAppleToken } = require('apple-signin-auth');
 
 // Serialize user for session
@@ -23,10 +22,8 @@ passport.deserializeUser(async (id, done) => {
         id: true,
         email: true,
         name: true,
-        phone: true,
         role: true,
         isActive: true,
-        createdAt: true,
       },
     });
     done(null, user);
@@ -35,501 +32,252 @@ passport.deserializeUser(async (id, done) => {
   }
 });
 
-// Google OAuth Strategy
+// ✅ SHARED HELPER: Handles Find/Create logic for ALL providers
+const handleSocialAuth = async (provider, profileData, done) => {
+  try {
+    const { email, name, providerId, profilePicture, firstName, lastName } =
+      profileData;
+
+    if (!email) {
+      return done(new Error(`No email found from ${provider} profile`), null);
+    }
+
+    // 1. Check if user exists linked to this provider (e.g., googleId matches)
+    // Note: We use dynamic key access like [provider + 'Id']
+    const providerKey = `${provider}Id`; // e.g., 'googleId', 'facebookId'
+
+    let user = await prisma.user.findFirst({
+      where: { [providerKey]: providerId },
+    });
+
+    if (user) {
+      // User exists and is linked. Update profile picture if missing.
+      if (!user.profilePicture && profilePicture) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { profilePicture },
+        });
+      }
+      return done(null, user);
+    }
+
+    // 2. Check if user exists by EMAIL (Link Account)
+    user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (user) {
+      // User exists but not linked. Link the account now.
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          [providerKey]: providerId,
+          profilePicture: user.profilePicture || profilePicture, // Update pic if empty
+        },
+      });
+      return done(null, user);
+    }
+
+    // 3. Create NEW User
+    const randomPassword = await bcrypt.hash(
+      Math.random().toString(36).substring(2, 15),
+      12
+    );
+
+    // Handle Name Splitting if not provided
+    const fName = firstName || name.split(' ')[0] || 'User';
+    const lName = lastName || name.split(' ').slice(1).join(' ') || '';
+
+    user = await prisma.user.create({
+      data: {
+        email,
+        name,
+        firstName: fName,
+        lastName: lName,
+        password: randomPassword,
+        [providerKey]: providerId,
+        profilePicture,
+        role: 'USER',
+        isActive: true,
+        verifiedAt: new Date(),
+      },
+    });
+
+    // 🚩 FLAG NEW USER
+    // This property is attached to the user object in memory only.
+    // The controller will read this and redirect to "Complete Profile".
+    user.isNew = true;
+
+    return done(null, user);
+  } catch (error) {
+    console.error(`${provider} Auth Error:`, error);
+    return done(error, null);
+  }
+};
+
+// --- STRATEGIES ---
+
+// 1. Google
 passport.use(
   new GoogleStrategy(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: `${process.env.BASE_URL}/api/auth/google/callback`,
+      callbackURL: `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`,
     },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails[0]?.value;
-        const name = profile.displayName;
-        const googleId = profile.id;
-        const profilePicture = profile.photos[0]?.value || null;
-
-        if (!email) {
-          return done(new Error('No email found from Google profile'), null);
-        }
-
-        // Check if user already exists
-        let user = await prisma.user.findUnique({
-          where: { email },
-        });
-
-        if (user) {
-          // User exists, update Google ID and profile picture if not set
-          const updateData = {};
-          if (!user.googleId) {
-            updateData.googleId = googleId;
-          }
-          if (!user.profilePicture && profilePicture) {
-            updateData.profilePicture = profilePicture;
-          }
-
-          if (Object.keys(updateData).length > 0) {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: updateData,
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                name: true,
-                phone: true,
-                profilePicture: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-              },
-            });
-          } else {
-            // Just return user with updated select fields for consistency
-            user = await prisma.user.findUnique({
-              where: { id: user.id },
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                name: true,
-                phone: true,
-                profilePicture: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-              },
-            });
-          }
-        } else {
-          // Create new user
-          const randomPassword = await bcrypt.hash(
-            Math.random().toString(36).substring(2, 15),
-            12
-          );
-
-          // Split name into firstName and lastName
-          const nameParts = name.split(' ');
-          const firstName = nameParts[0] || '';
-          const lastName = nameParts.slice(1).join(' ') || '';
-
-          user = await prisma.user.create({
-            data: {
-              email,
-              firstName,
-              lastName,
-              name,
-              password: randomPassword,
-              googleId,
-              profilePicture,
-              role: 'USER',
-              isActive: true,
-              verifiedAt: new Date(),
-            },
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              name: true,
-              phone: true,
-              profilePicture: true,
-              role: true,
-              isActive: true,
-              createdAt: true,
-            },
-          });
-        }
-
-        return done(null, user);
-      } catch (error) {
-        console.error('Google OAuth error:', error);
-        return done(error, null);
-      }
+    (accessToken, refreshToken, profile, done) => {
+      const data = {
+        providerId: profile.id,
+        email: profile.emails[0]?.value,
+        name: profile.displayName,
+        profilePicture: profile.photos[0]?.value,
+      };
+      handleSocialAuth('google', data, done);
     }
   )
 );
 
-// Facebook OAuth Strategy
+// 2. Facebook
 passport.use(
   new FacebookStrategy(
     {
       clientID: process.env.FACEBOOK_APP_ID,
       clientSecret: process.env.FACEBOOK_APP_SECRET,
-      callbackURL: `${process.env.BASE_URL}/api/auth/facebook/callback`,
+      callbackURL: `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/facebook/callback`,
       profileFields: ['id', 'emails', 'name', 'picture.type(large)'],
     },
-    async (accessToken, refreshToken, profile, done) => {
-      try {
-        const email = profile.emails[0]?.value;
-        const firstName = profile.name.givenName || '';
-        const lastName = profile.name.familyName || '';
-        const name = `${firstName} ${lastName}`.trim();
-        const facebookId = profile.id;
-        const profilePicture = profile.photos?.[0]?.value || null;
-
-        if (!email) {
-          return done(new Error('No email found from Facebook profile'), null);
-        }
-
-        // Check if user already exists
-        let user = await prisma.user.findUnique({
-          where: { email },
-        });
-
-        if (user) {
-          // User exists, update Facebook ID and profile picture if not set
-          const updateData = {};
-          if (!user.facebookId) {
-            updateData.facebookId = facebookId;
-          }
-          if (!user.profilePicture && profilePicture) {
-            updateData.profilePicture = profilePicture;
-          }
-
-          if (Object.keys(updateData).length > 0) {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: updateData,
-              select: {
-                id: true,
-                email: true,
-                firstName: true,
-                lastName: true,
-                name: true,
-                phone: true,
-                profilePicture: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-              },
-            });
-          }
-        } else {
-          // Create new user
-          const randomPassword = await bcrypt.hash(
-            Math.random().toString(36).substring(2, 15),
-            12
-          );
-
-          user = await prisma.user.create({
-            data: {
-              email,
-              firstName,
-              lastName,
-              name,
-              password: randomPassword,
-              facebookId,
-              profilePicture,
-              role: 'USER',
-              isActive: true,
-              verifiedAt: new Date(),
-            },
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-              name: true,
-              phone: true,
-              profilePicture: true,
-              role: true,
-              isActive: true,
-              createdAt: true,
-            },
-          });
-        }
-
-        return done(null, user);
-      } catch (error) {
-        console.error('Facebook OAuth error:', error);
-        return done(error, null);
-      }
+    (accessToken, refreshToken, profile, done) => {
+      const data = {
+        providerId: profile.id,
+        email: profile.emails[0]?.value,
+        firstName: profile.name.givenName,
+        lastName: profile.name.familyName,
+        name: `${profile.name.givenName} ${profile.name.familyName}`,
+        profilePicture: profile.photos[0]?.value,
+      };
+      handleSocialAuth('facebook', data, done);
     }
   )
 );
 
-// GitHub OAuth Strategy
+// 3. GitHub
 passport.use(
   new GitHubStrategy(
     {
       clientID: process.env.GITHUB_CLIENT_ID,
       clientSecret: process.env.GITHUB_CLIENT_SECRET,
-      callbackURL: `${process.env.BASE_URL}/api/auth/github/callback`,
+      callbackURL: `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/github/callback`,
       scope: ['user:email'],
     },
     async (accessToken, refreshToken, profile, done) => {
-      try {
-        let email = profile.emails?.[0]?.value;
-        const name =
-          profile.displayName ||
-          profile.username ||
-          profile._json.name ||
-          'GitHub User';
-        const githubId = profile.id;
-        const username = profile.username;
+      let email = profile.emails?.[0]?.value;
 
-        // If no email in profile, try to fetch it from GitHub API
-        if (!email) {
-          try {
-            const emailResponse = await axios.get(
-              'https://api.github.com/user/emails',
-              {
-                headers: {
-                  Authorization: `token ${accessToken}`,
-                  'User-Agent': 'Rentverse-App',
-                },
-              }
-            );
-
-            // Find primary email or first verified email
-            const emails = emailResponse.data;
-            const primaryEmail = emails.find(e => e.primary && e.verified);
-            const verifiedEmail = emails.find(e => e.verified);
-
-            email =
-              primaryEmail?.email || verifiedEmail?.email || emails[0]?.email;
-          } catch (apiError) {
-            console.error('Error fetching GitHub emails:', apiError.message);
-          }
-        }
-
-        // If still no email, create a placeholder email using GitHub username
-        if (!email) {
-          email = `${username}@github.placeholder.com`;
-        }
-
-        // Check if user already exists by GitHub ID first
-        let user = await prisma.user.findFirst({
-          where: { githubId },
-        });
-
-        if (user) {
-          // User exists with GitHub ID, just return
-          return done(null, user);
-        }
-
-        // Check if user exists by email (but only if it's not a placeholder email)
-        if (!email.includes('@github.placeholder.com')) {
-          user = await prisma.user.findUnique({
-            where: { email },
+      // Fetch email manually if private
+      if (!email) {
+        try {
+          const res = await axios.get('https://api.github.com/user/emails', {
+            headers: {
+              Authorization: `token ${accessToken}`,
+              'User-Agent': 'Rentverse',
+            },
           });
-
-          if (user) {
-            // User exists with this email, link GitHub account
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { githubId },
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                phone: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-              },
-            });
-            return done(null, user);
-          }
+          const primary = res.data.find(e => e.primary && e.verified);
+          email = primary ? primary.email : res.data[0].email;
+        } catch (e) {
+          console.error('Failed to fetch GitHub email');
         }
-
-        // Create new user
-        const randomPassword = await bcrypt.hash(
-          Math.random().toString(36).substring(2, 15),
-          12
-        );
-
-        user = await prisma.user.create({
-          data: {
-            email,
-            name,
-            password: randomPassword,
-            githubId,
-            role: 'USER',
-            isActive: true,
-            verifiedAt: new Date(),
-          },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            phone: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-          },
-        });
-
-        return done(null, user);
-      } catch (error) {
-        console.error('GitHub OAuth error:', error);
-        return done(error, null);
       }
+
+      const data = {
+        providerId: profile.id,
+        email: email || `${profile.username}@github.placeholder.com`,
+        name: profile.displayName || profile.username,
+        profilePicture: profile.photos?.[0]?.value,
+      };
+      handleSocialAuth('github', data, done);
     }
   )
 );
 
-// Twitter OAuth Strategy
+// 4. Twitter
 passport.use(
   new TwitterStrategy(
     {
       consumerKey: process.env.TWITTER_CONSUMER_KEY,
       consumerSecret: process.env.TWITTER_CONSUMER_SECRET,
-      callbackURL: `${process.env.BASE_URL}/api/auth/twitter/callback`,
+      callbackURL: `${process.env.BASE_URL || 'http://localhost:3000'}/api/auth/twitter/callback`,
       includeEmail: true,
     },
-    async (token, tokenSecret, profile, done) => {
-      try {
-        const email = profile.emails?.[0]?.value;
-        const name = profile.displayName || profile.username;
-        const twitterId = profile.id;
-
-        if (!email) {
-          return done(new Error('No email found from Twitter profile'), null);
-        }
-
-        // Check if user already exists
-        let user = await prisma.user.findUnique({
-          where: { email },
-        });
-
-        if (user) {
-          // User exists, update Twitter ID if not set
-          if (!user.twitterId) {
-            user = await prisma.user.update({
-              where: { id: user.id },
-              data: { twitterId },
-              select: {
-                id: true,
-                email: true,
-                name: true,
-                phone: true,
-                role: true,
-                isActive: true,
-                createdAt: true,
-              },
-            });
-          }
-        } else {
-          // Create new user
-          const randomPassword = await bcrypt.hash(
-            Math.random().toString(36).substring(2, 15),
-            12
-          );
-
-          user = await prisma.user.create({
-            data: {
-              email,
-              name,
-              password: randomPassword,
-              twitterId,
-              role: 'USER',
-              isActive: true,
-              verifiedAt: new Date(),
-            },
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              phone: true,
-              role: true,
-              isActive: true,
-              createdAt: true,
-            },
-          });
-        }
-
-        return done(null, user);
-      } catch (error) {
-        console.error('Twitter OAuth error:', error);
-        return done(error, null);
-      }
+    (token, tokenSecret, profile, done) => {
+      const data = {
+        providerId: profile.id,
+        email: profile.emails?.[0]?.value,
+        name: profile.displayName || profile.username,
+        profilePicture: profile.photos?.[0]?.value,
+      };
+      handleSocialAuth('twitter', data, done);
     }
   )
-); // Apple Sign In handler (manual implementation since no official Passport strategy)
+);
+
+// 5. Apple (Manual Handler)
 const handleAppleSignIn = async (appleToken, userInfo = null) => {
   try {
-    // Verify Apple token
     const applePayload = await verifyAppleToken(appleToken, {
       audience: process.env.APPLE_CLIENT_ID,
       issuer: 'https://appleid.apple.com',
     });
 
-    if (!applePayload) {
-      throw new Error('Invalid Apple token');
-    }
+    if (!applePayload) throw new Error('Invalid Apple token');
 
+    const email = applePayload.email;
     const appleId = applePayload.sub;
-    let email = applePayload.email;
-    let name = 'Apple User';
 
-    // If userInfo is provided (first time sign in), use it
-    if (userInfo) {
-      email = userInfo.email || email;
-      name = userInfo.name
-        ? `${userInfo.name.firstName || ''} ${userInfo.name.lastName || ''}`.trim()
-        : name;
-    }
+    // Construct data for helper
+    const data = {
+      providerId: appleId,
+      email: email,
+      name:
+        userInfo && userInfo.name
+          ? `${userInfo.name.firstName} ${userInfo.name.lastName}`.trim()
+          : 'Apple User',
+      firstName: userInfo?.name?.firstName,
+      lastName: userInfo?.name?.lastName,
+    };
 
-    if (!email) {
-      throw new Error('No email found from Apple Sign In');
-    }
+    // We can't use the standard `done` callback pattern here since this is called directly by a controller
+    // So we manually invoke the logic, but modified slightly for direct return
 
-    // Check if user already exists
-    let user = await prisma.user.findUnique({
-      where: { email },
-    });
+    // 1. Check existing
+    let user = await prisma.user.findUnique({ where: { appleId } });
+    if (user) return user;
 
+    // 2. Link account
+    user = await prisma.user.findUnique({ where: { email } });
     if (user) {
-      // User exists, update Apple ID if not set
-      if (!user.appleId) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { appleId },
-          select: {
-            id: true,
-            email: true,
-            name: true,
-            phone: true,
-            role: true,
-            isActive: true,
-            createdAt: true,
-          },
-        });
-      }
-    } else {
-      // Create new user
-      const randomPassword = await bcrypt.hash(
-        Math.random().toString(36).substring(2, 15),
-        12
-      );
-
-      user = await prisma.user.create({
-        data: {
-          email,
-          name,
-          password: randomPassword,
-          appleId,
-          role: 'USER',
-          isActive: true,
-          verifiedAt: new Date(),
-        },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          role: true,
-          isActive: true,
-          createdAt: true,
-        },
+      return await prisma.user.update({
+        where: { id: user.id },
+        data: { appleId },
       });
     }
 
+    // 3. Create New
+    const randomPassword = await bcrypt.hash(Math.random().toString(36), 12);
+    user = await prisma.user.create({
+      data: {
+        email,
+        name: data.name,
+        firstName: data.firstName || 'Apple',
+        lastName: data.lastName || 'User',
+        password: randomPassword,
+        appleId,
+        role: 'USER',
+        isActive: true,
+        verifiedAt: new Date(),
+      },
+    });
+
+    user.isNew = true; // 🚩 Flag for controller
     return user;
   } catch (error) {
     console.error('Apple Sign In error:', error);
@@ -537,7 +285,4 @@ const handleAppleSignIn = async (appleToken, userInfo = null) => {
   }
 };
 
-module.exports = {
-  passport,
-  handleAppleSignIn,
-};
+module.exports = { passport, handleAppleSignIn };
