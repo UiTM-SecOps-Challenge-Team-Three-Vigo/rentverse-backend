@@ -74,6 +74,7 @@ app.use(
         'http://localhost:8000',
         'http://127.0.0.1:3000',
         'https://curious-lively-monster.ngrok-free.app',
+        'https://rentverse-backend-d1k25woyg-shafiq-sazalis-projects.vercel.app', // Add your Vercel URL explicitly here just in case
       ];
 
       // Allow requests with no origin (mobile apps, curl) or allowed origins
@@ -153,29 +154,28 @@ app.use(
 );
 
 // ==========================================
-// 5. DOCUMENTATION (Swagger)
+// 5. DOCUMENTATION (Swagger) - [FIXED FOR VERCEL]
 // ==========================================
+
+// Define robust options that use Public CDNs for CSS/JS
+// This prevents Vercel 404s when looking for node_modules files
+const swaggerUiOptions = {
+  explorer: true,
+  customCssUrl:
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.0.0/swagger-ui.min.css',
+  customJs: [
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.0.0/swagger-ui-bundle.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.0.0/swagger-ui-standalone-preset.min.js',
+  ],
+  customSiteTitle: 'Rentverse API Documentation',
+  customfavIcon: '/favicon.ico',
+  swaggerOptions: { persistAuthorization: true },
+};
 
 app.use(
   '/docs',
   swaggerUi.serve,
-  swaggerUi.setup(swaggerSpecs, {
-    explorer: true,
-    customCss: `
-      .swagger-ui .topbar { display: none }
-      .swagger-ui .info .title { color: #1976d2 }
-      .server-info { 
-        background: #e3f2fd; 
-        padding: 10px; 
-        border-radius: 5px; 
-        margin: 10px 0;
-        border-left: 4px solid #1976d2;
-      }
-    `,
-    customSiteTitle: 'Rentverse API Documentation',
-    customfavIcon: '/favicon.ico',
-    swaggerOptions: { persistAuthorization: true },
-  })
+  swaggerUi.setup(swaggerSpecs, swaggerUiOptions)
 );
 
 // ==========================================
