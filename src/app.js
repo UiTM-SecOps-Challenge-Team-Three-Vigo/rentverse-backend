@@ -74,7 +74,7 @@ app.use(
         'http://localhost:8000',
         'http://127.0.0.1:3000',
         'https://curious-lively-monster.ngrok-free.app',
-        'https://rentverse-backend-d1k25woyg-shafiq-sazalis-projects.vercel.app', // Add your Vercel URL explicitly here just in case
+        'https://rentverse-backend-production-1e27.up.railway.app', // Add your Vercel URL explicitly here just in case
       ];
 
       // Allow requests with no origin (mobile apps, curl) or allowed origins
