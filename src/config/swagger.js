@@ -1,5 +1,4 @@
 const swaggerJsdoc = require('swagger-jsdoc');
-const path = require('path'); // <--- Import path
 
 const swaggerOptions = {
   definition: {
@@ -7,23 +6,34 @@ const swaggerOptions = {
     info: {
       title: 'Rentverse Backend API',
       version: '1.0.0',
-      description: 'API documentation for Rentverse backend application',
+      description:
+        'API documentation for Rentverse backend application with Prisma and PostgreSQL',
       contact: {
         name: 'API Support',
         email: 'support@rentverse.com',
       },
+      license: {
+        name: 'ISC',
+        url: 'https://opensource.org/licenses/ISC',
+      },
     },
     servers: [
       {
-        // Auto-detects the current server (Works for Vercel & Local)
-        url:
-          process.env.SERVER_URL ||
-          'https://rentverse-backend-d1k25woyg-shafiq-sazalis-projects.vercel.app',
-        description: 'Production Server (Vercel)',
+        url: `http://localhost:${process.env.PORT || 3005}`,
+        description: 'Local development server',
       },
       {
-        url: `http://localhost:${process.env.PORT || 3005}`,
-        description: 'Local Development',
+        url:
+          process.env.NGROK_URL ||
+          `http://localhost:${process.env.PORT || 3005}`,
+        description: process.env.NGROK_URL
+          ? 'Ngrok tunnel server'
+          : 'Development server',
+      },
+
+      {
+        url: 'https://rentverse-be.jokoyuliyanto.my.id',
+        description: 'Production server',
       },
     ],
     components: {
@@ -41,12 +51,8 @@ const swaggerOptions = {
       },
     ],
   },
-  // Use path.join(process.cwd()) to correctly find files on Vercel
-  apis: [
-    path.join(process.cwd(), 'src/routes/*.js'),
-    path.join(process.cwd(), 'src/modules/*/*.routes.js'),
-    path.join(process.cwd(), 'src/app.js'),
-  ],
+  apis: ['./src/routes/*.js', './src/modules/*/*.routes.js', './src/app.js'],
+  // Path to the API docs
 };
 
 const specs = swaggerJsdoc(swaggerOptions);
