@@ -67,7 +67,7 @@
     "passport-google-oauth20": "^2.0.0",
     "passport-twitter": "^1.0.4",
     "pdf-lib": "^1.17.1",
-    "puppeteer-core": "^24.33.0",
+    "puppeteer": "^24.33.0",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
     "streamifier": "^0.1.1",

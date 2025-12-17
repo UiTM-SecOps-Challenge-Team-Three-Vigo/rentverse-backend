@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const ejs = require('ejs');
-const puppeteer = require('puppeteer-core');
+// ✅ CHANGE: Use full puppeteer package to ensure Chromium is available
+const puppeteer = require('puppeteer');
 const { prisma } = require('../config/database');
 const {
   cloudinary,
@@ -12,8 +13,7 @@ const { v4: uuidv4 } = require('uuid');
 
 class PDFGenerationService {
   /**
-   * ✅ NEW HELPER: Convert local file path to base64 for PDF embedding
-   * Fixes the issue where Puppeteer cannot load local images via relative paths
+   * Convert local file path to base64 for PDF embedding
    */
   imageToBase64(relativePath) {
     try {
@@ -48,9 +48,6 @@ class PDFGenerationService {
 
   /**
    * Upload PDF buffer to Cloudinary using signed upload
-   * @param {Buffer} pdfBuffer
-   * @param {string} fileName
-   * @returns {Promise<Object>}
    */
   async uploadPDFToCloudinary(pdfBuffer, fileName) {
     if (!isCloudinaryConfigured) {
@@ -81,7 +78,7 @@ class PDFGenerationService {
         timestamp: signatureTimestamp,
       };
 
-      // ✅ FIX: Exclude 'resource_type' from signature generation
+      // Exclude 'resource_type' from signature generation
       const paramsToSign = { ...uploadParams };
       delete paramsToSign.resource_type;
 
@@ -191,23 +188,10 @@ class PDFGenerationService {
 
   /**
    * Chrome path detection
+   * ✅ SIMPLIFIED: Returns Env Var or null (letting Puppeteer decide)
    */
   getChromePath() {
-    if (process.env.CHROME_PATH) return process.env.CHROME_PATH;
-
-    const macChromePaths = [
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-      '/usr/bin/google-chrome-stable',
-      '/usr/bin/google-chrome',
-      '/usr/bin/chromium-browser',
-      '/usr/bin/chromium',
-    ];
-
-    for (const chromePath of macChromePaths) {
-      if (fs.existsSync(chromePath)) return chromePath;
-    }
-    return null;
+    return process.env.CHROME_PATH || null;
   }
 
   /**
@@ -239,7 +223,7 @@ class PDFGenerationService {
 
     fs.writeFileSync(filePath, pdfBuffer);
 
-    const serverUrl = `${process.env.BASE_URL || 'http://localhost:3005'}/api/files/pdfs/${uniqueFileName}`;
+    const serverUrl = `${process.env.BASE_URL || 'http://localhost:8000'}/api/files/pdfs/${uniqueFileName}`;
 
     return {
       fileName: uniqueFileName,
@@ -251,11 +235,7 @@ class PDFGenerationService {
   }
 
   /**
-   * ✅ MODIFIED: Generate Final PDF with Signatures and Update Agreement
-   * @param {string} leaseId
-   * @param {string} tenantSigPath - Path/URL to tenant signature
-   * @param {string} landlordSigPath - Path/URL to landlord signature
-   * @returns {Promise<Object>}
+   * Generate Final PDF with Signatures and Update Agreement
    */
   async generateAndUploadRentalAgreementPDF(
     leaseId,
@@ -277,7 +257,7 @@ class PDFGenerationService {
           },
           tenant: true,
           landlord: true,
-          agreement: true, // ✅ Include the existing agreement draft
+          agreement: true, // Include the existing agreement draft
         },
       });
 
@@ -290,7 +270,6 @@ class PDFGenerationService {
       );
 
       // 2. PREPARE IMAGES: Convert paths to Base64
-      // ✅ This fixes the "I can't see the signs" issue
       const tenantSigBase64 = tenantSigPath
         ? this.imageToBase64(tenantSigPath)
         : null;
@@ -309,7 +288,7 @@ class PDFGenerationService {
           landlord: {
             name: lease.landlord.name,
             signDate: new Date().toLocaleDateString('en-GB'),
-            image: landlordSigBase64, // ✅ Pass Base64 data
+            image: landlordSigBase64,
           },
           tenant: {
             name: lease.tenant.name,
@@ -318,7 +297,7 @@ class PDFGenerationService {
                   'en-GB'
                 )
               : new Date().toLocaleDateString('en-GB'),
-            image: tenantSigBase64, // ✅ Pass Base64 data
+            image: tenantSigBase64,
           },
         },
       };
@@ -337,7 +316,7 @@ class PDFGenerationService {
 
       // 5. Generate PDF using Puppeteer
       console.log('🌐 Launching browser for PDF generation...');
-      const chromePath = this.getChromePath();
+
       const launchOptions = {
         headless: 'new',
         args: [
@@ -350,7 +329,11 @@ class PDFGenerationService {
           '--disable-gpu',
         ],
       };
-      if (chromePath) launchOptions.executablePath = chromePath;
+
+      // ✅ FIX: Only specify executablePath if explicitly set in env variables
+      if (process.env.CHROME_PATH) {
+        launchOptions.executablePath = process.env.CHROME_PATH;
+      }
 
       const browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
@@ -372,13 +355,13 @@ class PDFGenerationService {
         `✅ PDF generated successfully! Size: ${Math.round(pdfBuffer.length / 1024)} KB`
       );
 
-      // 6. Save PDF (Primary: Local, Backup: Cloudinary)
+      // 6. Save PDF (Primary: Cloudinary, Backup: Local)
       const fileName = `final-agreement-${lease.id}`;
       let uploadResult;
 
       try {
         console.log('☁️ Attempting upload to Cloudinary...');
-        // ✅ Try Cloudinary First
+        // Try Cloudinary First
         uploadResult = await this.uploadPDFToCloudinary(pdfBuffer, fileName);
         console.log('✅ Final PDF uploaded to Cloudinary successfully.');
       } catch (cloudError) {
@@ -399,7 +382,7 @@ class PDFGenerationService {
 
       console.log('📍 PDF URL:', uploadResult.url);
 
-      // 7. ✅ UPDATE the Existing Agreement Record (Don't create new)
+      // 7. Update the Existing Agreement Record
       console.log('💾 Updating rental agreement record with final PDF...');
       const updatedAgreement = await prisma.rentalAgreement.update({
         where: { leaseId },

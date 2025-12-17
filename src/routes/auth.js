@@ -1155,7 +1155,18 @@ router.post('/mfa/send-email', authLimiter, async (req, res) => {
   try {
     const { tempToken } = req.body;
 
-    // Verify temp token to identify user
+    // 1. Check for Server Configuration
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      console.error(
+        '❌ Server Error: EMAIL_USER or EMAIL_PASS is missing in .env'
+      );
+      return res.status(500).json({
+        success: false,
+        message: 'Server email configuration is missing.',
+      });
+    }
+
+    // 2. Verify temp token
     let decoded;
     try {
       decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
@@ -1165,14 +1176,15 @@ router.post('/mfa/send-email', authLimiter, async (req, res) => {
         .json({ success: false, message: 'Session expired' });
     }
 
-    if (!decoded.partial)
+    if (!decoded.partial) {
       return res.status(400).json({ success: false, message: 'Invalid flow' });
+    }
 
-    // Generate 6-digit OTP
+    // 3. Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Save to DB
+    // 4. Update User in DB
     const user = await prisma.user.update({
       where: { id: decoded.userId },
       data: {
@@ -1181,19 +1193,46 @@ router.post('/mfa/send-email', authLimiter, async (req, res) => {
       },
     });
 
-    // Send Email
-    await transporter.sendMail({
-      from: '"RentVerse Security" <noreply@rentverse.com>',
-      to: user.email,
-      subject: 'Your Verification Code',
-      text: `Your login verification code is: ${otp}. It expires in 10 minutes.`,
-      html: `<b>Your login verification code is: ${otp}</b><br>It expires in 10 minutes.`,
-    });
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'User not found.' });
+    }
 
-    res.json({ success: true, message: 'Code sent to your email' });
+    // 5. Send Email with Enhanced Error Handling
+    try {
+      const info = await transporter.sendMail({
+        from: `"RentVerse Security" <${process.env.EMAIL_USER}>`, // ✅ Use authenticated email to prevent blocking
+        to: user.email,
+        subject: 'Your Verification Code',
+        text: `Your login verification code is: ${otp}. It expires in 10 minutes.`,
+        html: `
+          <div style="font-family: sans-serif; padding: 20px;">
+            <h2>RentVerse Verification</h2>
+            <p>Your login verification code is:</p>
+            <h1 style="color: #0d9488; letter-spacing: 5px;">${otp}</h1>
+            <p>This code expires in 10 minutes.</p>
+            <p style="font-size: 12px; color: #666;">If you didn't request this, please ignore this email.</p>
+          </div>
+        `,
+      });
+
+      console.log(`✅ Email sent to ${user.email}: ${info.messageId}`);
+      res.json({ success: true, message: 'Code sent to your email' });
+    } catch (emailError) {
+      console.error('❌ Nodemailer Error:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send email. Please check server logs.',
+        error:
+          process.env.NODE_ENV === 'development'
+            ? emailError.message
+            : undefined,
+      });
+    }
   } catch (error) {
-    console.error('Send Email error:', error);
-    res.status(500).json({ success: false, message: 'Failed to send email' });
+    console.error('❌ Send Email General Error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 });
 
