@@ -318,23 +318,29 @@ class PDFGenerationService {
       console.log('🌐 Launching browser for PDF generation...');
 
       const launchOptions = {
-        headless: 'new',
+        headless: 'new', // or true
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
-          '--disable-accelerated-2d-canvas',
-          '--no-first-run',
-          '--no-zygote',
           '--disable-gpu',
+          '--no-zygote',
+          '--single-process', // ✅ Added for better performance in Docker/Railway
         ],
       };
 
-      // ✅ FIX: Only specify executablePath if explicitly set in env variables
-      if (process.env.CHROME_PATH) {
-        launchOptions.executablePath = process.env.CHROME_PATH;
+      /**
+       * ✅ FIX: Handle pathing automatically.
+       * If NIXPACKS_NODE_PUPPETEER_INSTALL is set on Railway,
+       * it will usually find the path automatically.
+       */
+      const executablePath =
+        process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH;
+      if (executablePath) {
+        launchOptions.executablePath = executablePath;
       }
 
+      // Launch and generate
       const browser = await puppeteer.launch(launchOptions);
       const page = await browser.newPage();
 
